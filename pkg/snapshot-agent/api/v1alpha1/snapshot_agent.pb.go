@@ -135,6 +135,7 @@ type SnapshotRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	Group         string                 `protobuf:"bytes,2,opt,name=group,proto3" json:"group,omitempty"`
+	Backend       string                 `protobuf:"bytes,3,opt,name=backend,proto3" json:"backend,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -179,6 +180,13 @@ func (x *SnapshotRequest) GetJobId() string {
 func (x *SnapshotRequest) GetGroup() string {
 	if x != nil {
 		return x.Group
+	}
+	return ""
+}
+
+func (x *SnapshotRequest) GetBackend() string {
+	if x != nil {
+		return x.Backend
 	}
 	return ""
 }
@@ -231,6 +239,7 @@ type RestoreRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	Group         string                 `protobuf:"bytes,2,opt,name=group,proto3" json:"group,omitempty"`
+	Backend       string                 `protobuf:"bytes,3,opt,name=backend,proto3" json:"backend,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -275,6 +284,13 @@ func (x *RestoreRequest) GetJobId() string {
 func (x *RestoreRequest) GetGroup() string {
 	if x != nil {
 		return x.Group
+	}
+	return ""
+}
+
+func (x *RestoreRequest) GetBackend() string {
+	if x != nil {
+		return x.Backend
 	}
 	return ""
 }
@@ -730,15 +746,17 @@ var File_snapshot_agent_proto protoreflect.FileDescriptor
 
 const file_snapshot_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x14snapshot_agent.proto\x12\x17snapshot_agent.v1alpha1\">\n" +
+	"\x14snapshot_agent.proto\x12\x17snapshot_agent.v1alpha1\"X\n" +
 	"\x0fSnapshotRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x14\n" +
-	"\x05group\x18\x02 \x01(\tR\x05group\"5\n" +
+	"\x05group\x18\x02 \x01(\tR\x05group\x12\x18\n" +
+	"\abackend\x18\x03 \x01(\tR\abackend\"5\n" +
 	"\x10SnapshotResponse\x12!\n" +
-	"\foperation_id\x18\x01 \x01(\tR\voperationId\"=\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\"W\n" +
 	"\x0eRestoreRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x14\n" +
-	"\x05group\x18\x02 \x01(\tR\x05group\"4\n" +
+	"\x05group\x18\x02 \x01(\tR\x05group\x12\x18\n" +
+	"\abackend\x18\x03 \x01(\tR\abackend\"4\n" +
 	"\x0fRestoreResponse\x12!\n" +
 	"\foperation_id\x18\x01 \x01(\tR\voperationId\"8\n" +
 	"\x13GetOperationRequest\x12!\n" +
