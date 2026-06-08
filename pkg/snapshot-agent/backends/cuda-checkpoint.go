@@ -81,18 +81,7 @@ func (c *CudaCheckpoint) getCudaCheckpointPath() string {
 }
 
 func (c *CudaCheckpoint) runSudoCommand(ctx context.Context, name string, args ...string) error {
-	// Check if 'sudo' exists in PATH
-	_, err := exec.LookPath("sudo")
-	var cmd *exec.Cmd
-	if err != nil {
-		log.Printf("'sudo' not found in PATH, attempting to run command directly: %s %v", name, args)
-		// #nosec G204
-		cmd = exec.CommandContext(ctx, name, args...)
-	} else {
-		// #nosec G204
-		cmd = exec.CommandContext(ctx, "sudo", append([]string{name}, args...)...)
-	}
-
+	cmd := exec.CommandContext(ctx, name, args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("command failed: %w, output: %s", err, string(out))
 	}
