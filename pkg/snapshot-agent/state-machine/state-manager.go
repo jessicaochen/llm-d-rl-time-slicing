@@ -1,10 +1,10 @@
 package statemachine
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	pb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/snapshot-agent/api/v1alpha1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -89,7 +89,7 @@ func (sm *StateManager) StartSnapshot(jobID, group string, worker func() error) 
 		return "", status.Errorf(codes.FailedPrecondition, "job %s is in FAULTED state", jobID)
 	}
 
-	opID := fmt.Sprintf("snap-%d", time.Now().UnixNano())
+	opID := uuid.New().String()
 	op := &Operation{
 		ID:        opID,
 		JobID:     jobID,
@@ -154,7 +154,7 @@ func (sm *StateManager) StartRestore(jobID, group string, worker func() error) (
 		return "", status.Errorf(codes.FailedPrecondition, "job %s is in FAULTED state", jobID)
 	}
 
-	opID := fmt.Sprintf("rest-%d", time.Now().UnixNano())
+	opID := uuid.New().String()
 	op := &Operation{
 		ID:        opID,
 		JobID:     jobID,
