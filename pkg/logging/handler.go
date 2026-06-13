@@ -55,7 +55,7 @@ func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
 		r.AddAttrs(slog.String("GroupID", groupID))
 	}
 	if workerID, ok := ctx.Value(workerIDKeyType{}).(int); ok {
-		r.AddAttrs(slog.Int("workerID", workerID))
+		r.AddAttrs(slog.Int("WorkerID", workerID))
 	}
 	return h.Handler.Handle(ctx, r)
 }

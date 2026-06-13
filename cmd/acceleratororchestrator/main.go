@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -26,7 +25,8 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("Failed to run server: %v", err)
+		slog.Error("Failed to run server", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -94,7 +94,7 @@ func run() error {
 	nodeInformerFactory.Start(ctx.Done())
 	podInformerFactory.Start(ctx.Done())
 
-	log.Printf("Starting Accelerator Orchestrator server...")
+	slog.InfoContext(ctx, "Starting Accelerator Orchestrator server")
 	return server.StartServer(ctx, *port, ctrl, *controllerWorkers)
 }
 
@@ -108,7 +108,7 @@ func buildKubeConfig(kubeconfigPath string) (*rest.Config, error) {
 		return config, nil
 	}
 
-	log.Printf("In-cluster config failed, trying default local kubeconfig: %v", err)
+	slog.Info("In-cluster config failed, trying default local kubeconfig", "error", err)
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)

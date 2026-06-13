@@ -41,7 +41,7 @@ func TestContextHandler(t *testing.T) {
 	if data["GroupID"] != "group-888" {
 		t.Errorf("Expected GroupID 'group-888', got %v", data["GroupID"])
 	}
-	if data["workerID"] != float64(42) {
-		t.Errorf("Expected workerID 42, got %v", data["workerID"])
+	if data["WorkerID"] != float64(42) {
+		t.Errorf("Expected WorkerID 42, got %v", data["WorkerID"])
 	}
 }
