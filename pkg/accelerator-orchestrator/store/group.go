@@ -168,4 +168,3 @@ func (g *Group) Clone() *Group {
 		lockStore:      g.lockStore,
 	}
 }
-

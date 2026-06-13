@@ -115,4 +115,3 @@ func (q *WaitingJobQueue) Clone() *WaitingJobQueue {
 
 	return clone
 }
-

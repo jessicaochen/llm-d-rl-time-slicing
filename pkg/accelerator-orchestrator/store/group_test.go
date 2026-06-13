@@ -267,4 +267,3 @@ func TestGroup_Clone(t *testing.T) {
 		t.Errorf("Clone Queue Len changed after original enqueued new job")
 	}
 }
-
