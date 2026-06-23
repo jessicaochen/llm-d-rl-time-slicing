@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/api/v1alpha1"
 	"github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/infrastructure"
 	"github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/store"
 	agentpb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/snapshot-agent/api/v1alpha1"
@@ -19,8 +18,11 @@ import (
 )
 
 type fakeSnapshotAgentStore struct {
-	statusFunc func(ctx context.Context, nodeName string) (*agentpb.StatusResponse, error)
-	closeFunc  func(nodeName string) error
+	statusFunc    func(ctx context.Context, nodeName string) (*agentpb.StatusResponse, error)
+	closeFunc     func(nodeName string) error
+	snapshotFunc  func(ctx context.Context, nodeName, jobID, groupID string) (*agentpb.SnapshotResponse, error)
+	operationFunc func(ctx context.Context, nodeName, operationID string) (*agentpb.GetOperationResponse, error)
+	restoreFunc   func(ctx context.Context, nodeName, jobID, groupID string) (*agentpb.RestoreResponse, error)
 }
 
 func (f *fakeSnapshotAgentStore) GetStatus(ctx context.Context, nodeName string) (*agentpb.StatusResponse, error) {
@@ -35,6 +37,33 @@ func (f *fakeSnapshotAgentStore) CloseClient(nodeName string) error {
 		return f.closeFunc(nodeName)
 	}
 	return nil
+}
+
+func (f *fakeSnapshotAgentStore) Snapshot(
+	ctx context.Context, nodeName, jobID, groupID string,
+) (*agentpb.SnapshotResponse, error) {
+	if f.snapshotFunc != nil {
+		return f.snapshotFunc(ctx, nodeName, jobID, groupID)
+	}
+	return &agentpb.SnapshotResponse{}, nil
+}
+
+func (f *fakeSnapshotAgentStore) GetOperation(
+	ctx context.Context, nodeName, operationID string,
+) (*agentpb.GetOperationResponse, error) {
+	if f.operationFunc != nil {
+		return f.operationFunc(ctx, nodeName, operationID)
+	}
+	return &agentpb.GetOperationResponse{}, nil
+}
+
+func (f *fakeSnapshotAgentStore) Restore(
+	ctx context.Context, nodeName, jobID, groupID string,
+) (*agentpb.RestoreResponse, error) {
+	if f.restoreFunc != nil {
+		return f.restoreFunc(ctx, nodeName, jobID, groupID)
+	}
+	return &agentpb.RestoreResponse{}, nil
 }
 
 func TestObserveGroupState_Cleanup(t *testing.T) {
@@ -151,7 +180,7 @@ func TestObserveGroupState_UpdateNodes(t *testing.T) {
 	}
 }
 
-func TestObserveGroupState_UpdateJobsAndContext(t *testing.T) {
+func TestObserveGroupState_UpdateJobsAndPods(t *testing.T) {
 	clientset := fake.NewClientset()
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
 	nodeInformer := informerFactory.Core().V1().Nodes()
@@ -161,19 +190,7 @@ func TestObserveGroupState_UpdateJobsAndContext(t *testing.T) {
 	groupStore := store.NewGroupStore(lockStore)
 	jobStore := store.NewJobStore()
 
-	fakeAgentStore := &fakeSnapshotAgentStore{
-		statusFunc: func(ctx context.Context, nodeName string) (*agentpb.StatusResponse, error) {
-			if nodeName == "node-1" {
-				return &agentpb.StatusResponse{
-					JobStatuses: []*agentpb.JobStatus{
-						{JobId: "job-a", State: agentpb.JobState_JOB_STATE_RUNNING},
-						{JobId: "job-b", State: agentpb.JobState_JOB_STATE_IDLE}, // Should be ignored because job-b has no pods
-					},
-				}, nil
-			}
-			return &agentpb.StatusResponse{}, nil
-		},
-	}
+	fakeAgentStore := &fakeSnapshotAgentStore{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -244,16 +261,7 @@ func TestObserveGroupState_UpdateJobsAndContext(t *testing.T) {
 		t.Errorf("Expected job-a to have pod %s, got %v", pod.UID, job.Pods())
 	}
 
-	// Verify job-a context state is updated from snapshot agent
-	ctxState, ok := job.ContextState()["node-1"]
-	if !ok {
-		t.Fatalf("Expected context state for job-a on node-1 to exist")
-	}
-	if ctxState != pb.SnapshotAgentJobState_STATE_RUNNING {
-		t.Errorf("Expected job-a state to be RUNNING, got %v", ctxState)
-	}
-
-	// Verify job-b (which was in snapshot agent but not observed as pod) is NOT in store
+	// Verify job-b (which has no pods) is NOT in store
 	_, err = jobStore.Get(ctx, "group-1", "job-b")
 	if !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("Expected job-b to not exist in store, got: %v", err)

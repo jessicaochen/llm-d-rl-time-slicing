@@ -2,13 +2,20 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"runtime/debug"
 	"time"
 
+	pb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/api/v1alpha1"
 	"github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/store"
 	"github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/logging"
+	agentpb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/snapshot-agent/api/v1alpha1"
+)
+
+const (
+	operationPollInterval = 1 * time.Second
 )
 
 // handleCrash is a helper that recovers from panics, logs the panic and stack trace.
@@ -85,6 +92,7 @@ type Controller struct {
 	groupStore        *store.GroupStore
 	jobStore          *store.JobStore
 	infraOrchestrator InfrastructureOrchestrator
+	agentStore        store.SnapshotAgentStore
 }
 
 // NewController creates a new Controller with the provided stores, queue, and infrastructure orchestrator.
@@ -93,12 +101,14 @@ func NewController(
 	jobStore *store.JobStore,
 	queue WorkQueue,
 	infraOrchestrator InfrastructureOrchestrator,
+	agentStore store.SnapshotAgentStore,
 ) *Controller {
 	return &Controller{
 		queue:             queue,
 		groupStore:        groupStore,
 		jobStore:          jobStore,
 		infraOrchestrator: infraOrchestrator,
+		agentStore:        agentStore,
 	}
 }
 
@@ -180,6 +190,10 @@ func (c *Controller) reconcileGroup(ctx context.Context, groupID string) error {
 		return fmt.Errorf("failed to observe group state: %w", err)
 	}
 
+	if err := c.ObserveJobContext(ctx, groupID); err != nil {
+		return fmt.Errorf("failed to observe job context: %w", err)
+	}
+
 	// TODO: deduce activejob for restart case when group is in STATE_IDLE_YIELDED
 
 	// 2. Determine Desired State
@@ -197,7 +211,7 @@ func (c *Controller) reconcileGroup(ctx context.Context, groupID string) error {
 	// 3. Act
 	// TODO: add optional fan out parallism for node reconciliation
 	for _, node := range g.Status().Nodes() {
-		if err := c.reconcileNode(ctx, node, activeJob); err != nil {
+		if err := c.reconcileNode(ctx, g.ID(), node, activeJob); err != nil {
 			return fmt.Errorf("failed to reconcile node %s: %w", node, err)
 		}
 	}
@@ -211,8 +225,86 @@ func (c *Controller) reconcileGroup(ctx context.Context, groupID string) error {
 }
 
 // reconcileNode reconciles the state of a single node for the active job.
-func (c *Controller) reconcileNode(ctx context.Context, nodeName, activeJobID string) error {
-	// TODO: Stub
+func (c *Controller) reconcileNode(ctx context.Context, groupID, nodeName, activeJobID string) error {
+	ctx = logging.WithNodeName(ctx, nodeName)
+	jobs, err := c.jobStore.ListByGroup(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to list jobs for group %s: %w", groupID, err)
+	}
+
+	agentJobStates := make(map[string]pb.SnapshotAgentJobState_State)
+	for _, job := range jobs {
+		state, ok := job.ContextState()[nodeName]
+		if !ok {
+			state = pb.SnapshotAgentJobState_STATE_UNSPECIFIED
+		}
+		agentJobStates[job.JobID()] = state
+	}
+
+	slog.DebugContext(ctx, "Reconciling node", "activeJobID", activeJobID, "agentJobStates", agentJobStates)
+
+	// 1. Early exits for no reconciliation work needed/possible
+	if activeJobID != "" {
+		// Already running
+		if state, ok := agentJobStates[activeJobID]; ok && state == pb.SnapshotAgentJobState_STATE_RUNNING {
+			slog.InfoContext(ctx, "Active job is already running, exiting early", "activeJobID", activeJobID)
+			return nil
+		}
+
+		// Faulted group
+		if state, ok := agentJobStates[activeJobID]; ok && state == pb.SnapshotAgentJobState_STATE_FAULTED {
+			return fmt.Errorf("active job %s is in FAULTED state on node %s, requires human intervention", activeJobID, nodeName)
+		}
+	}
+
+	// 2. Wait out any existing transitions
+	// TODO: crash recovery detect that an agent is still in the middle of transistioning. We will not have the operation
+	// number but we can still wait till it leaves that state.
+
+	// 3. Ensure no other jobs have their context loaded
+	for jobID, state := range agentJobStates {
+		if jobID == activeJobID || state != pb.SnapshotAgentJobState_STATE_RUNNING {
+			continue
+		}
+
+		slog.InfoContext(ctx, "Triggering snapshot for job", "jobID", jobID, "state", state)
+		resp, err := c.agentStore.Snapshot(ctx, nodeName, jobID, groupID)
+		if err != nil {
+			return fmt.Errorf("failed to trigger snapshot for job %s on node %s: %w", jobID, nodeName, err)
+		}
+		if err := c.waitForOperation(ctx, nodeName, resp.OperationId); err != nil {
+			return fmt.Errorf("failed while waiting for snapshot operation %s for job %s on node %s: %w",
+				resp.OperationId, jobID, nodeName, err)
+		}
+		if err := c.observeNodeJobContext(ctx, groupID, nodeName); err != nil {
+			return fmt.Errorf("failed to refresh agent state after snapshot: %w", err)
+		}
+	}
+
+	if activeJobID == "" {
+		return nil
+	}
+
+	// 4. Ensure active job is loaded where there is available context
+	state, ok := agentJobStates[activeJobID]
+	if !ok || state != pb.SnapshotAgentJobState_STATE_SAVED {
+		return nil
+	}
+
+	slog.InfoContext(ctx, "Triggering restore for active job", "jobID", activeJobID, "state", state)
+	resp, err := c.agentStore.Restore(ctx, nodeName, activeJobID, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to trigger restore for active job %s on node %s: %w",
+			activeJobID, nodeName, err)
+	}
+	if err := c.waitForOperation(ctx, nodeName, resp.OperationId); err != nil {
+		return fmt.Errorf("failed waiting for restore op %s for job %s on %s: %w",
+			resp.OperationId, activeJobID, nodeName, err)
+	}
+	if err := c.observeNodeJobContext(ctx, groupID, nodeName); err != nil {
+		return fmt.Errorf("failed to refresh agent state after restore: %w", err)
+	}
+
 	return nil
 }
 
@@ -220,4 +312,104 @@ func (c *Controller) reconcileNode(ctx context.Context, nodeName, activeJobID st
 func (c *Controller) updateGroupStatus(ctx context.Context, g *store.Group) error {
 	// TODO: Stub. implement status deduction
 	return nil
+}
+
+// ObserveJobContext queries snapshot agents for all nodes in the group and updates job context states.
+func (c *Controller) ObserveJobContext(ctx context.Context, groupID string) error {
+	g, err := c.groupStore.Get(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to get group %s from store: %w", groupID, err)
+	}
+	groupNodes := g.Status().Nodes()
+
+	for _, nodeName := range groupNodes {
+		if err := c.observeNodeJobContext(ctx, groupID, nodeName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// observeNodeJobContext queries the snapshot agent for a single node and updates job context states in the store.
+// It logs and ignores agent communication errors (non-fatal), but returns store errors (fatal).
+func (c *Controller) observeNodeJobContext(ctx context.Context, groupID, nodeName string) error {
+	resp, err := c.agentStore.GetStatus(ctx, nodeName)
+	if err != nil {
+		slog.ErrorContext(ctx, "Failed to get status from snapshot agent", "error", err, "node", nodeName)
+		return nil
+	}
+
+	for _, js := range resp.JobStatuses {
+		// Only update if the job is known in this group
+		_, err := c.jobStore.Get(ctx, groupID, js.JobId)
+		if errors.Is(err, store.ErrNotFound) {
+			continue
+		} else if err != nil {
+			return fmt.Errorf("failed to get job %s from store: %w", js.JobId, err)
+		}
+
+		state := translateJobState(js.State)
+		if err := c.jobStore.UpdateContextState(ctx, groupID, js.JobId, nodeName, state); err != nil {
+			return fmt.Errorf("failed to update job context state for job %s on node %s: %w", js.JobId, nodeName, err)
+		}
+		slog.DebugContext(ctx, "Updated job context state", "job", js.JobId, "node", nodeName, "state", state)
+	}
+	return nil
+}
+
+func translateJobState(s agentpb.JobState) pb.SnapshotAgentJobState_State {
+	switch s {
+	case agentpb.JobState_JOB_STATE_IDLE:
+		return pb.SnapshotAgentJobState_STATE_IDLE
+	case agentpb.JobState_JOB_STATE_RUNNING:
+		return pb.SnapshotAgentJobState_STATE_RUNNING
+	case agentpb.JobState_JOB_STATE_TRANSITIONING:
+		return pb.SnapshotAgentJobState_STATE_TRANSITIONING
+	case agentpb.JobState_JOB_STATE_SAVED:
+		return pb.SnapshotAgentJobState_STATE_SAVED
+	case agentpb.JobState_JOB_STATE_FAULTED:
+		return pb.SnapshotAgentJobState_STATE_FAULTED
+	default:
+		return pb.SnapshotAgentJobState_STATE_UNSPECIFIED
+	}
+}
+
+// waitForOperation blocks until the given operation on the node completes or fails.
+func (c *Controller) waitForOperation(ctx context.Context, nodeName, operationID string) error {
+	ctx = logging.WithNodeName(ctx, nodeName)
+	ctx = logging.WithOperationID(ctx, operationID)
+
+	ticker := time.NewTicker(operationPollInterval)
+	defer ticker.Stop()
+
+	slog.InfoContext(ctx, "Waiting for agent operation to complete")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context cancelled while waiting for operation %s: %w", operationID, ctx.Err())
+		case <-ticker.C:
+			resp, err := c.agentStore.GetOperation(ctx, nodeName, operationID)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to get operation status, will retry", "error", err)
+				continue
+			}
+
+			switch resp.Status {
+			case agentpb.OperationStatus_OPERATION_STATUS_COMPLETE:
+				slog.InfoContext(ctx, "Operation completed successfully", "elapsedMs", resp.ElapsedMs)
+				return nil
+			case agentpb.OperationStatus_OPERATION_STATUS_FAILED:
+				errStr := "unknown error"
+				if resp.Error != nil {
+					errStr = *resp.Error
+				}
+				return fmt.Errorf("operation %s failed: %s", operationID, errStr)
+			case agentpb.OperationStatus_OPERATION_STATUS_PENDING:
+				slog.DebugContext(ctx, "Operation still pending", "elapsedMs", resp.ElapsedMs)
+			default:
+				slog.WarnContext(ctx, "Unknown operation status", "status", resp.Status)
+			}
+		}
+	}
 }

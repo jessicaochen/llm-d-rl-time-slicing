@@ -15,6 +15,9 @@ import (
 type SnapshotAgentStore interface {
 	GetStatus(ctx context.Context, nodeName string) (*agentpb.StatusResponse, error)
 	CloseClient(nodeName string) error
+	Snapshot(ctx context.Context, nodeName, jobID, groupID string) (*agentpb.SnapshotResponse, error)
+	GetOperation(ctx context.Context, nodeName, operationID string) (*agentpb.GetOperationResponse, error)
+	Restore(ctx context.Context, nodeName, jobID, groupID string) (*agentpb.RestoreResponse, error)
 }
 
 type clientEntry struct {
@@ -100,6 +103,69 @@ func (s *GRPCSnapshotAgentStore) GetStatus(ctx context.Context, nodeName string)
 			timestamp: time.Now(),
 		}
 		s.mu.Unlock()
+	}
+
+	return resp, nil
+}
+
+// Snapshot triggers a snapshot on the agent for the given node.
+func (s *GRPCSnapshotAgentStore) Snapshot(
+	ctx context.Context, nodeName, jobID, groupID string,
+) (*agentpb.SnapshotResponse, error) {
+	address := s.resolveNodeAddress(nodeName)
+	client, err := s.getClient(address)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Snapshot(ctx, &agentpb.SnapshotRequest{
+		JobId: jobID,
+		Group: groupID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to trigger snapshot on agent at %s: %w", address, err)
+	}
+
+	return resp, nil
+}
+
+// GetOperation queries the snapshot agent for the status of a long-running operation.
+func (s *GRPCSnapshotAgentStore) GetOperation(
+	ctx context.Context, nodeName, operationID string,
+) (*agentpb.GetOperationResponse, error) {
+	address := s.resolveNodeAddress(nodeName)
+	client, err := s.getClient(address)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.GetOperation(ctx, &agentpb.GetOperationRequest{
+		OperationId: operationID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get operation %s from agent at %s: %w", operationID, address, err)
+	}
+
+	return resp, nil
+}
+
+// Restore triggers an asynchronous restoration of the accelerator context for a job on the node.
+func (s *GRPCSnapshotAgentStore) Restore(
+	ctx context.Context, nodeName, jobID, groupID string,
+) (*agentpb.RestoreResponse, error) {
+	address := s.resolveNodeAddress(nodeName)
+	client, err := s.getClient(address)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Restore(ctx, &agentpb.RestoreRequest{
+		JobId:   jobID,
+		Group:   groupID,
+		Backend: agentpb.Backend_BACKEND_CUDA, // Default to CUDA
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to trigger restore for job %s on agent at %s: %w", jobID, address, err)
 	}
 
 	return resp, nil
