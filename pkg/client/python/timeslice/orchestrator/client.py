@@ -79,17 +79,8 @@ class OrchestratorClient:
             ValueError: If job_id or group_id is not provided either here or in the constructor.
             OrchestratorError: If the RPC fails.
         """
-        resolved_job_id = job_id or self.job_id
-        resolved_group_id = group_id or self.group_id
-
-        if not resolved_job_id:
-            raise ValueError(
-                "job_id must be provided either in the constructor or in the method call."
-            )
-        if not resolved_group_id:
-            raise ValueError(
-                "group_id must be provided either in the constructor or in the method call."
-            )
+        resolved_job_id = self._resolve_job_id(job_id)
+        resolved_group_id = self._resolve_group_id(group_id)
 
         request = pb2.AcquireRequest(job_id=resolved_job_id, group_id=resolved_group_id)
         try:
@@ -125,17 +116,8 @@ class OrchestratorClient:
             ValueError: If job_id or group_id is not provided either here or in the constructor.
             OrchestratorError: If the RPC fails.
         """
-        resolved_job_id = job_id or self.job_id
-        resolved_group_id = group_id or self.group_id
-
-        if not resolved_job_id:
-            raise ValueError(
-                "job_id must be provided either in the constructor or in the method call."
-            )
-        if not resolved_group_id:
-            raise ValueError(
-                "group_id must be provided either in the constructor or in the method call."
-            )
+        resolved_job_id = self._resolve_job_id(job_id)
+        resolved_group_id = self._resolve_group_id(group_id)
 
         request = pb2.YieldRequest(job_id=resolved_job_id, group_id=resolved_group_id)
         try:
@@ -164,11 +146,7 @@ class OrchestratorClient:
             ValueError: If group_id is not provided either here or in the constructor.
             OrchestratorError: If the RPC fails.
         """
-        resolved_group_id = group_id or self.group_id
-        if not resolved_group_id:
-            raise ValueError(
-                "group_id must be provided either in the constructor or in the method call."
-            )
+        resolved_group_id = self._resolve_group_id(group_id)
 
         request = pb2.GetGroupStatusRequest(group_id=resolved_group_id)
         try:
@@ -271,3 +249,19 @@ class OrchestratorClient:
             return AgentJobState[friendly_name]
         except (ValueError, KeyError):
             return AgentJobState.UNSPECIFIED
+
+    def _resolve_job_id(self, job_id: Optional[str]) -> str:
+        resolved = job_id or self.job_id
+        if not resolved:
+            raise ValueError(
+                "job_id must be provided either in the constructor or in the method call."
+            )
+        return resolved
+
+    def _resolve_group_id(self, group_id: Optional[str]) -> str:
+        resolved = group_id or self.group_id
+        if not resolved:
+            raise ValueError(
+                "group_id must be provided either in the constructor or in the method call."
+            )
+        return resolved
