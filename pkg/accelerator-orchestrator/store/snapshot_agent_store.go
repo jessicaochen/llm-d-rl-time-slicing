@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"fmt"
+	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -32,19 +34,21 @@ type cacheEntry struct {
 
 // GRPCSnapshotAgentStore implements SnapshotAgentStore using gRPC.
 type GRPCSnapshotAgentStore struct {
-	mu       sync.Mutex
-	clients  map[string]*clientEntry
-	cache    map[string]*cacheEntry
-	cacheTTL time.Duration
+	mu          sync.Mutex
+	clients     map[string]*clientEntry
+	cache       map[string]*cacheEntry
+	cacheTTL    time.Duration
+	defaultPort int
 }
 
 // NewGRPCSnapshotAgentStore creates a new GRPCSnapshotAgentStore.
 // If ttl is <= 0, caching is disabled.
-func NewGRPCSnapshotAgentStore(ttl time.Duration) *GRPCSnapshotAgentStore {
+func NewGRPCSnapshotAgentStore(ttl time.Duration, defaultPort int) *GRPCSnapshotAgentStore {
 	return &GRPCSnapshotAgentStore{
-		clients:  make(map[string]*clientEntry),
-		cache:    make(map[string]*cacheEntry),
-		cacheTTL: ttl,
+		clients:     make(map[string]*clientEntry),
+		cache:       make(map[string]*cacheEntry),
+		cacheTTL:    ttl,
+		defaultPort: defaultPort,
 	}
 }
 
@@ -198,7 +202,10 @@ func (s *GRPCSnapshotAgentStore) CloseClient(nodeName string) error {
 }
 
 func (s *GRPCSnapshotAgentStore) resolveNodeAddress(nodeName string) string {
-	// TODO: Implement actual node name to address translation once we know the port and DNS choices.
-	// For now, assume they are the same for unit tests.
-	return nodeName
+	// If the nodeName already contains a port, use it as-is.
+	if _, _, err := net.SplitHostPort(nodeName); err == nil {
+		return nodeName
+	}
+	// Otherwise, append the default snapshot-agent port.
+	return net.JoinHostPort(nodeName, strconv.Itoa(s.defaultPort))
 }
