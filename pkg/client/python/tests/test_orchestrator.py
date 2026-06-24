@@ -1,0 +1,221 @@
+import datetime
+import unittest
+from unittest.mock import MagicMock, patch
+
+import grpc
+
+from timeslice import OrchestratorClient
+from timeslice.orchestrator.exceptions import (
+    OrchestratorConnectionError,
+    OrchestratorTimeoutError,
+)
+from timeslice.orchestrator.types import AgentJobState, GroupLockState
+
+# Import the generated proto messages for mocking responses
+# We need to add _generated to path to import them in the test if needed,
+# but we can also just let OrchestratorClient import them and we access them via the client module,
+# or we can use the same import trick.
+import pathlib
+import sys
+
+_generated_dir = str(
+    pathlib.Path(__file__).parent.parent / "timeslice" / "orchestrator" / "_generated"
+)
+if _generated_dir not in sys.path:
+    sys.path.insert(0, _generated_dir)
+import accelerator_orchestrator_pb2 as pb2  # noqa: E402
+
+
+class TestOrchestratorClient(unittest.TestCase):
+    def setUp(self):
+        self.target = "localhost:50051"
+        self.job_id = "test-job"
+        self.group_id = "test-group"
+
+        # Patch the gRPC channel and stub
+        self.mock_channel_patcher = patch(
+            "timeslice.orchestrator.client.grpc.insecure_channel"
+        )
+        self.mock_stub_patcher = patch(
+            "timeslice.orchestrator.client.pb2_grpc.AcceleratorOrchestratorServiceStub"
+        )
+
+        self.mock_insecure_channel = self.mock_channel_patcher.start()
+        self.mock_stub_class = self.mock_stub_patcher.start()
+
+        self.mock_stub = MagicMock()
+        self.mock_stub_class.return_value = self.mock_stub
+
+        self.client = OrchestratorClient(self.target, self.job_id, self.group_id)
+
+    def tearDown(self):
+        self.client.close()
+        self.mock_channel_patcher.stop()
+        self.mock_stub_patcher.stop()
+
+    def test_init(self):
+        self.mock_insecure_channel.assert_called_once_with(self.target, options=None)
+        self.mock_stub_class.assert_called_once_with(
+            self.mock_insecure_channel.return_value
+        )
+        self.assertEqual(self.client.job_id, self.job_id)
+        self.assertEqual(self.client.group_id, self.group_id)
+
+    def test_acquire_success(self):
+        # Mock Acquire response
+        mock_response = pb2.AcquireResponse(
+            success=True, waited_ms=150, context_restored=True
+        )
+        self.mock_stub.Acquire.return_value = mock_response
+
+        result = self.client.acquire(timeout_sec=10.0)
+
+        # Verify call
+        self.mock_stub.Acquire.assert_called_once()
+        args, kwargs = self.mock_stub.Acquire.call_args
+        request = args[0]
+        self.assertEqual(request.job_id, self.job_id)
+        self.assertEqual(request.group_id, self.group_id)
+        self.assertEqual(kwargs.get("timeout"), 10.0)
+
+        # Verify result mapping
+        self.assertTrue(result.success)
+        self.assertEqual(result.waited_ms, 150)
+        self.assertTrue(result.context_restored)
+
+    def test_release_success(self):
+        # Mock Yield response
+        mock_response = pb2.YieldResponse(
+            success=True, pending_waiters=2, snapshot_deferred=False
+        )
+        self.mock_stub.Yield.return_value = mock_response
+
+        result = self.client.release()
+
+        # Verify call
+        self.mock_stub.Yield.assert_called_once()
+        args, _ = self.mock_stub.Yield.call_args
+        request = args[0]
+        self.assertEqual(request.job_id, self.job_id)
+        self.assertEqual(request.group_id, self.group_id)
+
+        # Verify result mapping
+        self.assertTrue(result.success)
+        self.assertEqual(result.pending_waiters, 2)
+        self.assertFalse(result.snapshot_deferred)
+
+    def test_get_status_success(self):
+        # Mock GetGroupStatus response
+        from google.protobuf.timestamp_pb2 import Timestamp
+
+        proto_ts = Timestamp()
+        proto_ts.FromDatetime(
+            datetime.datetime(2026, 6, 24, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        )
+
+        mock_response = pb2.GetGroupStatusResponse(
+            group=pb2.GroupStatus(
+                group_id=self.group_id,
+                group_state=pb2.GroupStatus.State.STATE_LOCKED,
+                state_timestamp=proto_ts,
+                locking_job="some-other-job",
+                active_job="some-other-job",
+                waiter_queue_depth=3,
+                loaded_job="some-other-job",
+            ),
+            agent_job_states=[
+                pb2.SnapshotAgentJobState(
+                    agent="node-1",
+                    job_id="some-other-job",
+                    job_state=pb2.SnapshotAgentJobState.State.STATE_RUNNING,
+                ),
+                pb2.SnapshotAgentJobState(
+                    agent="node-2",
+                    job_id="some-other-job",
+                    job_state=pb2.SnapshotAgentJobState.State.STATE_SAVED,
+                ),
+            ],
+        )
+        self.mock_stub.GetGroupStatus.return_value = mock_response
+
+        status = self.client.get_status()
+
+        # Verify call
+        self.mock_stub.GetGroupStatus.assert_called_once()
+        args, _ = self.mock_stub.GetGroupStatus.call_args
+        request = args[0]
+        self.assertEqual(request.group_id, self.group_id)
+
+        # Verify group mapping
+        self.assertEqual(status.group.group_id, self.group_id)
+        self.assertEqual(status.group.group_state, GroupLockState.LOCKED)
+        self.assertEqual(status.group.locking_job, "some-other-job")
+        self.assertEqual(status.group.waiter_queue_depth, 3)
+        self.assertEqual(status.group.state_timestamp.year, 2026)
+
+        # Verify agent states mapping
+        self.assertEqual(len(status.agent_job_states), 2)
+        self.assertEqual(status.agent_job_states[0].agent, "node-1")
+        self.assertEqual(status.agent_job_states[0].job_state, AgentJobState.RUNNING)
+        self.assertEqual(status.agent_job_states[1].agent, "node-2")
+        self.assertEqual(status.agent_job_states[1].job_state, AgentJobState.SAVED)
+
+    def test_list_groups_success(self):
+        mock_response = pb2.ListGroupsResponse(group_ids=["group-1", "group-2"])
+        self.mock_stub.ListGroups.return_value = mock_response
+
+        groups = self.client.list_groups()
+
+        self.mock_stub.ListGroups.assert_called_once()
+        self.assertEqual(groups, ["group-1", "group-2"])
+
+    def test_lock_context_manager(self):
+        # Mock acquire and release
+        self.client.acquire = MagicMock()
+        self.client.release = MagicMock()
+
+        with self.client.lock(timeout_sec=5.0):
+            self.client.acquire.assert_called_once_with(timeout_sec=5.0)
+            self.client.release.assert_not_called()
+
+        self.client.release.assert_called_once()
+
+    def test_lock_context_manager_exception(self):
+        # Verify release is called even if block raises error
+        self.client.acquire = MagicMock()
+        self.client.release = MagicMock()
+
+        try:
+            with self.client.lock():
+                raise ValueError("Something went wrong")
+        except ValueError:
+            pass
+
+        self.client.acquire.assert_called_once()
+        self.client.release.assert_called_once()
+
+    def test_grpc_error_mapping_unavailable(self):
+        # Mock gRPC error
+        mock_error = grpc.RpcError()
+        # We need to mock the code and details methods
+        mock_error.code = MagicMock(return_value=grpc.StatusCode.UNAVAILABLE)
+        mock_error.details = MagicMock(return_value="Server down")
+
+        self.mock_stub.Acquire.side_effect = mock_error
+
+        with self.assertRaises(OrchestratorConnectionError):
+            self.client.acquire()
+
+    def test_grpc_error_mapping_timeout(self):
+        mock_error = grpc.RpcError()
+        mock_error.code = MagicMock(return_value=grpc.StatusCode.DEADLINE_EXCEEDED)
+        mock_error.details = MagicMock(return_value="Timed out")
+
+        self.mock_stub.Acquire.side_effect = mock_error
+
+        with self.assertRaises(OrchestratorTimeoutError):
+            self.client.acquire()
+
+
+if __name__ == "__main__":
+    unittest.main()
