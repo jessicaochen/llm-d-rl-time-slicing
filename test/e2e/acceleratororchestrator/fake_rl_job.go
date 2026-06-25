@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	pb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -231,7 +232,7 @@ func (f *FakeRLJob) deployPods(ctx context.Context, groupID string) error {
 	}
 
 	for _, node := range nodes.Items {
-		podName := fmt.Sprintf("pod-%s-%s-%s", f.name, groupID, node.Name)
+		podName := fmt.Sprintf("pod-%s-%s-%s", f.name, groupID, uuid.NewString()[:8])
 
 		// Pull pod definition from factory
 		pod := f.podFactory.GetPod(groupID)
