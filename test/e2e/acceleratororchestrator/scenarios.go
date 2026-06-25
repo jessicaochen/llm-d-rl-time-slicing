@@ -26,7 +26,12 @@ import (
 )
 
 // RunSingleRLJobScenario runs the single RL job E2E scenario.
-func RunSingleRLJobScenario(ctx context.Context, clientset kubernetes.Interface, client pb.AcceleratorOrchestratorServiceClient, logger Logger) error {
+func RunSingleRLJobScenario(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	client pb.AcceleratorOrchestratorServiceClient,
+	logger Logger,
+) error {
 	logger.Log("Starting Single RL Job Scenario")
 
 	// Run Fake RL Job
@@ -66,7 +71,12 @@ func RunSingleRLJobScenario(ctx context.Context, clientset kubernetes.Interface,
 }
 
 // RunQueuedRLJobsScenario runs the queued RL jobs contention scenario.
-func RunQueuedRLJobsScenario(ctx context.Context, clientset kubernetes.Interface, client pb.AcceleratorOrchestratorServiceClient, logger Logger) error {
+func RunQueuedRLJobsScenario(
+	ctx context.Context,
+	clientset kubernetes.Interface,
+	client pb.AcceleratorOrchestratorServiceClient,
+	logger Logger,
+) error {
 	logger.Log("Starting Queued RL Jobs Scenario")
 
 	jobA := NewFakeRLJob("job-a", client, clientset, 1, logger) // 1 iteration

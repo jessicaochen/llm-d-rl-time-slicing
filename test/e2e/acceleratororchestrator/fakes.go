@@ -109,7 +109,12 @@ func (f *FakeSnapshotAgentStore) CloseClient(nodeName string) error {
 	return nil
 }
 
-func (f *FakeSnapshotAgentStore) Snapshot(ctx context.Context, nodeName, jobID, groupID string) (*agentpb.SnapshotResponse, error) {
+func (f *FakeSnapshotAgentStore) Snapshot(
+	ctx context.Context,
+	nodeName,
+	jobID,
+	groupID string,
+) (*agentpb.SnapshotResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -161,7 +166,11 @@ func (f *FakeSnapshotAgentStore) Restore(ctx context.Context, nodeName, jobID, g
 	return &agentpb.RestoreResponse{OperationId: opID}, nil
 }
 
-func (f *FakeSnapshotAgentStore) GetOperation(ctx context.Context, nodeName, operationID string) (*agentpb.GetOperationResponse, error) {
+func (f *FakeSnapshotAgentStore) GetOperation(
+	ctx context.Context,
+	nodeName,
+	operationID string,
+) (*agentpb.GetOperationResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 

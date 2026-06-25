@@ -27,9 +27,10 @@ import (
 )
 
 var inspectCmd = &cobra.Command{
-	Use:           "inspect",
-	Short:         "Inspect orchestrator and snapshot-agent deployment status",
-	Long:          `Checks the Kubernetes cluster to ensure both the accelerator-orchestrator deployment and snapshot-agent daemonset are deployed and running, and returns their image versions.`,
+	Use:   "inspect",
+	Short: "Inspect orchestrator and snapshot-agent deployment status",
+	Long: `Checks the Kubernetes cluster to ensure both the accelerator-orchestrator deployment ` +
+		`and snapshot-agent daemonset are deployed and running, and returns their image versions.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,10 +57,7 @@ var inspectCmd = &cobra.Command{
 		}
 
 		ctx := context.Background()
-		overallPassed, err := verifyCluster(ctx, clientset)
-		if err != nil {
-			return err
-		}
+		overallPassed := verifyCluster(ctx, clientset)
 
 		if overallPassed {
 			fmt.Println("Inspection Result: PASSED")
@@ -77,7 +75,7 @@ func init() {
 
 // verifyCluster runs the verification checks against the cluster and prints the results.
 // Returns true if all checks passed, false otherwise.
-func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) (bool, error) {
+func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) bool {
 	namespace := "timeslice-system" // Default namespace as per helm charts
 	overallPassed := true
 
@@ -108,22 +106,24 @@ func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) (bool, 
 		// Fallback: search by name containing "acceleratororchestrator"
 		allDeps, err := clientset.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
 		if err == nil {
-			for _, d := range allDeps.Items {
+			for i := range allDeps.Items {
+				d := &allDeps.Items[i]
 				if strings.Contains(d.Name, "acceleratororchestrator") {
-					orchDep = &d
+					orchDep = d
 					break
 				}
 			}
 		}
 	}
 
-	if err != nil {
+	switch {
+	case err != nil:
 		orchPassed = false
 		orchDetails = []string{fmt.Sprintf("Error listing deployments: %v", err)}
-	} else if orchDep == nil {
+	case orchDep == nil:
 		orchPassed = false
 		orchDetails = []string{fmt.Sprintf("Deployment not found in namespace %s", namespace)}
-	} else {
+	default:
 		ready := orchDep.Status.ReadyReplicas
 		desired := int32(1)
 		if orchDep.Spec.Replicas != nil {
@@ -164,22 +164,24 @@ func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) (bool, 
 		// Fallback: search by name containing "snapshot-agent"
 		allDS, err := clientset.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{})
 		if err == nil {
-			for _, ds := range allDS.Items {
+			for i := range allDS.Items {
+				ds := &allDS.Items[i]
 				if strings.Contains(ds.Name, "snapshot-agent") {
-					agentDS = &ds
+					agentDS = ds
 					break
 				}
 			}
 		}
 	}
 
-	if err != nil {
+	switch {
+	case err != nil:
 		agentPassed = false
 		agentDetails = []string{fmt.Sprintf("Error listing daemonsets: %v", err)}
-	} else if agentDS == nil {
+	case agentDS == nil:
 		agentPassed = false
 		agentDetails = []string{fmt.Sprintf("DaemonSet not found in namespace %s", namespace)}
-	} else {
+	default:
 		ready := agentDS.Status.NumberReady
 		if ready > 0 {
 			agentPassed = true
@@ -217,7 +219,8 @@ func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) (bool, 
 		}
 		var labeledNodes []LabeledNodeInfo
 
-		for _, node := range nodes.Items {
+		for i := range nodes.Items {
+			node := &nodes.Items[i]
 			for k, v := range node.Labels {
 				if strings.HasPrefix(k, nodeLabelPrefix) && v == "true" {
 					group := strings.TrimPrefix(k, nodeLabelPrefix)
@@ -232,9 +235,8 @@ func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) (bool, 
 
 		if len(labeledNodes) > 0 {
 			nodePassed = true
-			nodeDetails = []string{
-				fmt.Sprintf("Status: Found %d labeled nodes", len(labeledNodes)),
-			}
+			nodeDetails = make([]string, 0, 1+len(labeledNodes))
+			nodeDetails = append(nodeDetails, fmt.Sprintf("Status: Found %d labeled nodes", len(labeledNodes)))
 			for _, ln := range labeledNodes {
 				nodeDetails = append(nodeDetails, fmt.Sprintf("Node: %s (group: %s)", ln.Name, ln.Group))
 			}
@@ -249,5 +251,5 @@ func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) (bool, 
 	printResult("Labeled GPU Nodes", nodePassed, nodeDetails)
 	fmt.Println()
 
-	return overallPassed, nil
+	return overallPassed
 }

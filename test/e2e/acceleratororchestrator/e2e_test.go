@@ -1,3 +1,4 @@
+//nolint:testpackage // Integration E2E tests require package-level access to unexported helper trackQueue
 package acceleratororchestrator
 
 import (
@@ -28,6 +29,30 @@ func TestE2E_SingleRLJob(t *testing.T) {
 
 	// 1. Initialize Fake Kubernetes Clientset
 	clientset := fake.NewClientset()
+
+	// Populate Fake Kubernetes with Nodes BEFORE starting informers to avoid startup races
+	nodeSampler := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "node-sampler-1",
+			Labels: map[string]string{"group.timeslice.io/samplers": "true"},
+		},
+	}
+	_, err := clientset.CoreV1().Nodes().Create(ctx, nodeSampler, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create node-sampler-1: %v", err)
+	}
+
+	nodeTrainer := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "node-trainer-1",
+			Labels: map[string]string{"group.timeslice.io/trainers": "true"},
+		},
+	}
+	_, err = clientset.CoreV1().Nodes().Create(ctx, nodeTrainer, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create node-trainer-1: %v", err)
+	}
+
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
 	nodeInformer := informerFactory.Core().V1().Nodes()
 	podInformer := informerFactory.Core().V1().Pods()
@@ -78,7 +103,8 @@ func TestE2E_SingleRLJob(t *testing.T) {
 	}()
 
 	// 5. Start gRPC Server
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	lc := net.ListenConfig{}
+	lis, err := lc.Listen(ctx, "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Failed to listen: %v", err)
 	}
@@ -93,45 +119,24 @@ func TestE2E_SingleRLJob(t *testing.T) {
 	defer grpcServer.Stop()
 
 	// Create gRPC Client
-	conn, err := google_grpc.Dial(lis.Addr().String(), google_grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := google_grpc.NewClient(lis.Addr().String(), google_grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		t.Fatalf("Failed to dial gRPC server: %v", err)
+		t.Fatalf("Failed to create gRPC client: %v", err)
 	}
 	defer conn.Close()
 	client := pb.NewAcceleratorOrchestratorServiceClient(conn)
 
-	// 6. Populate Fake Kubernetes with Nodes
-	nodeSampler := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "node-sampler-1",
-			Labels: map[string]string{"group.timeslice.io/samplers": "true"},
-		},
-	}
-	_, err = clientset.CoreV1().Nodes().Create(ctx, nodeSampler, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create node-sampler-1: %v", err)
-	}
-
-	nodeTrainer := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "node-trainer-1",
-			Labels: map[string]string{"group.timeslice.io/trainers": "true"},
-		},
-	}
-	_, err = clientset.CoreV1().Nodes().Create(ctx, nodeTrainer, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create node-trainer-1: %v", err)
-	}
+	// Nodes already populated at startup
 
 	// Wait for K8s caches to sync and infra orchestrator to populate stores
 	err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		gs, err := groupStore.Get(ctx, "samplers")
 		if err != nil {
-			return false, nil
+			return false, nil //nolint:nilerr // Intentional to allow polling to retry on transient "not found" errors
 		}
 		gt, err := groupStore.Get(ctx, "trainers")
 		if err != nil {
-			return false, nil
+			return false, nil //nolint:nilerr // Intentional to allow polling to retry on transient "not found" errors
 		}
 		return len(gs.Status().Nodes()) == 1 && len(gt.Status().Nodes()) == 1, nil
 	})
@@ -154,6 +159,30 @@ func TestE2E_QueuedRLJobs(t *testing.T) {
 
 	// 1. Initialize Fake Kubernetes Clientset
 	clientset := fake.NewClientset()
+
+	// Populate Fake Kubernetes with Nodes BEFORE starting informers to avoid startup races
+	nodeSampler := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "node-sampler-1",
+			Labels: map[string]string{"group.timeslice.io/samplers": "true"},
+		},
+	}
+	_, err := clientset.CoreV1().Nodes().Create(ctx, nodeSampler, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create node-sampler-1: %v", err)
+	}
+
+	nodeTrainer := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "node-trainer-1",
+			Labels: map[string]string{"group.timeslice.io/trainers": "true"},
+		},
+	}
+	_, err = clientset.CoreV1().Nodes().Create(ctx, nodeTrainer, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create node-trainer-1: %v", err)
+	}
+
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
 	nodeInformer := informerFactory.Core().V1().Nodes()
 	podInformer := informerFactory.Core().V1().Pods()
@@ -204,7 +233,8 @@ func TestE2E_QueuedRLJobs(t *testing.T) {
 	}()
 
 	// 5. Start gRPC Server
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	lc := net.ListenConfig{}
+	lis, err := lc.Listen(ctx, "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Failed to listen: %v", err)
 	}
@@ -219,45 +249,24 @@ func TestE2E_QueuedRLJobs(t *testing.T) {
 	defer grpcServer.Stop()
 
 	// Create gRPC Client
-	conn, err := google_grpc.Dial(lis.Addr().String(), google_grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := google_grpc.NewClient(lis.Addr().String(), google_grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		t.Fatalf("Failed to dial gRPC server: %v", err)
+		t.Fatalf("Failed to create gRPC client: %v", err)
 	}
 	defer conn.Close()
 	client := pb.NewAcceleratorOrchestratorServiceClient(conn)
 
-	// 6. Populate Fake Kubernetes with Nodes
-	nodeSampler := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "node-sampler-1",
-			Labels: map[string]string{"group.timeslice.io/samplers": "true"},
-		},
-	}
-	_, err = clientset.CoreV1().Nodes().Create(ctx, nodeSampler, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create node-sampler-1: %v", err)
-	}
-
-	nodeTrainer := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "node-trainer-1",
-			Labels: map[string]string{"group.timeslice.io/trainers": "true"},
-		},
-	}
-	_, err = clientset.CoreV1().Nodes().Create(ctx, nodeTrainer, metav1.CreateOptions{})
-	if err != nil {
-		t.Fatalf("Failed to create node-trainer-1: %v", err)
-	}
+	// Nodes already populated at startup
 
 	// Wait for K8s caches to sync and infra orchestrator to populate stores
 	err = wait.PollUntilContextTimeout(ctx, 100*time.Millisecond, 5*time.Second, true, func(ctx context.Context) (bool, error) {
 		gs, err := groupStore.Get(ctx, "samplers")
 		if err != nil {
-			return false, nil
+			return false, nil //nolint:nilerr // Intentional to allow polling to retry on transient "not found" errors
 		}
 		gt, err := groupStore.Get(ctx, "trainers")
 		if err != nil {
-			return false, nil
+			return false, nil //nolint:nilerr // Intentional to allow polling to retry on transient "not found" errors
 		}
 		return len(gs.Status().Nodes()) == 1 && len(gt.Status().Nodes()) == 1, nil
 	})

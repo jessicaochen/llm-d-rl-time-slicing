@@ -36,9 +36,10 @@ var testCmd = &cobra.Command{
 }
 
 var orchestratorTestCmd = &cobra.Command{
-	Use:           "orchestrator",
-	Short:         "Run E2E scenario tests against the cluster",
-	Long:          `Runs the E2E scenario tests (Single RL Job and Queued RL Jobs) against the active Kubernetes cluster and the deployed Accelerator Orchestrator.`,
+	Use:   "orchestrator",
+	Short: "Run E2E scenario tests against the cluster",
+	Long: `Runs the E2E scenario tests (Single RL Job and Queued RL Jobs) ` +
+		`against the active Kubernetes cluster and the deployed Accelerator Orchestrator.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,10 +69,7 @@ var orchestratorTestCmd = &cobra.Command{
 
 		// 3. STEP 1: General Prerequisite Check (Verify Deployment)
 		fmt.Println("=== Step 1: Running Prerequisite Verification ===")
-		overallPassed, err := verifyCluster(ctx, clientset)
-		if err != nil {
-			return fmt.Errorf("prerequisite verification failed: %w", err)
-		}
+		overallPassed := verifyCluster(ctx, clientset)
 		if !overallPassed {
 			return fmt.Errorf("prerequisite check failed: orchestrator/agents are not ready or no labeled nodes found. Aborting E2E tests")
 		}
@@ -121,18 +119,25 @@ var orchestratorTestCmd = &cobra.Command{
 
 		// 5. STEP 3: Connect to Orchestrator gRPC Server
 		fmt.Printf("=== Step 3: Connecting to Orchestrator at %s ===\n", orchestratorAddr)
-		// Connect with a timeout to fail fast if unreachable
-		dialCtx, dialCancel := context.WithTimeout(ctx, 5*time.Second)
-		defer dialCancel()
-		conn, err := google_grpc.DialContext(dialCtx, orchestratorAddr,
+		conn, err := google_grpc.NewClient(orchestratorAddr,
 			google_grpc.WithTransportCredentials(insecure.NewCredentials()),
-			google_grpc.WithBlock(), // Block until connection is established
 		)
 		if err != nil {
-			return fmt.Errorf("failed to connect to orchestrator at %s: %w (make sure to port-forward if necessary: kubectl port-forward svc/timeslice-acceleratororchestrator 50051:50051 -n timeslice-system)", orchestratorAddr, err)
+			return fmt.Errorf("failed to create orchestrator client: %w", err)
 		}
 		defer conn.Close()
 		client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+
+		// Ping the orchestrator with a quick call to ensure it's reachable
+		pingCtx, pingCancel := context.WithTimeout(ctx, 5*time.Second)
+		defer pingCancel()
+		_, err = client.ListGroups(pingCtx, &pb.ListGroupsRequest{})
+		if err != nil {
+			return fmt.Errorf("failed to connect to orchestrator at %s: %w "+
+				"(make sure to port-forward if necessary: "+
+				"kubectl port-forward svc/timeslice-acceleratororchestrator 50051:50051 -n timeslice-system)",
+				orchestratorAddr, err)
+		}
 		fmt.Printf("Connected successfully.\n\n")
 
 		// 6. STEP 4: Run E2E Scenarios

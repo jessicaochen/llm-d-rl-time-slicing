@@ -38,7 +38,13 @@ type FakeRLJob struct {
 	OnTraining func(ctx context.Context)
 }
 
-func NewFakeRLJob(name string, client pb.AcceleratorOrchestratorServiceClient, clientset kubernetes.Interface, iterations int, t Logger) *FakeRLJob {
+func NewFakeRLJob(
+	name string,
+	client pb.AcceleratorOrchestratorServiceClient,
+	clientset kubernetes.Interface,
+	iterations int,
+	t Logger,
+) *FakeRLJob {
 	return &FakeRLJob{
 		name:       name,
 		client:     client,
@@ -231,7 +237,8 @@ func (f *FakeRLJob) deployPods(ctx context.Context, groupID string) error {
 		return fmt.Errorf("no nodes found for group %s", groupID)
 	}
 
-	for _, node := range nodes.Items {
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
 		podName := fmt.Sprintf("pod-%s-%s-%s", f.name, groupID, uuid.NewString()[:8])
 
 		// Pull pod definition from factory
