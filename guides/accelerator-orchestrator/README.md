@@ -2,19 +2,19 @@
 
 The Accelerator Orchestrator is the central coordination brain of the Time-Slicing platform. It manages cooperative lock queues across multi-tenant RL workloads and orchestrates accelerator memory snapshot and restore operations across distributed nodes.
 
-By coordinating access to shared accelerator pools, it eliminates the "stop-and-wait" inefficiency in Reinforcement Learning (RL) loops, greatly improving accelerator duty cycles.
+By coordinating access to shared accelerator pools, it enables RL workloads to eliminate the "stop-and-wait" inefficiency in Reinforcement Learning (RL) loops, greatly improving accelerator duty cycles.
 
 ## Concepts & Architecture
 
 ### Use Cases
 
 1.  **Cooperative RL Job Interleaving:** Interleave independent RL jobs on shared GPU/TPU pools (e.g., Job B samples while Job A trains) to maximize utilization.
-2.  **Multi-tenant Resource Sharing:** Manage queueing and fair sharing of accelerator pools across teams/experiments without manual coordination or OOM risks.
+2.  **Multi-tenant Resource Sharing:** Manage fair sharing of accelerator pools across teams/experiments without manual coordination or OOM risks.
 
 ### Orchestrator Overview
 
 The Accelerator Orchestrator runs as a cluster-level service. It:
-- **Manages Lock Queues:** Maintains a First-In, First-Out (FIFO) lock queue for each Group to ensure orderly access.
+- **Manages Lock Queues:** Maintains a First-In, First-Out (FIFO) lock queue for each accelerator pool to ensure orderly access.
 - **Orchestrates Swaps:** Coordinates with node-local [Snapshot Agents](../snapshot-agent/README.md) to atomically evict (snapshot) the yielding job's accelerator memory and restore the next pending job's accelerator memory.
 
 ### Key Concepts
@@ -53,8 +53,8 @@ graph TD
 
 #### How it Works (End-to-End Flow)
 
-1.  **Acquire:** Job A reaches a boundary (e.g., entering training) and calls `acquire()`, blocking until granted.
-2.  **Queue:** If another job (Job B) holds the lock, Job A enters a FIFO queue.
+1.  **Acquire:** Job A reaches a work boundary (e.g., entering a training step, beginning rollout/sampling phase) and calls `acquire()`, blocking until granted.
+2.  **Wait:** If another job (Job B) holds the lock, Job A enters a FIFO queue and waits till it gets the lock.
 3.  **Evict (Snapshot):** When Job B calls `yield()`, the Orchestrator instructs the Snapshot Agent to save Job B's accelerator memory to host DRAM.
 4.  **Restore:** The Orchestrator instructs the Agent to restore Job A's saved state from host DRAM to accelerator memory.
 5.  **Resume:** The Orchestrator grants the lock, unblocking Job A to resume execution.
@@ -104,7 +104,7 @@ spec:
   devices:
     requests:
     - name: double-gpus
-      deviceClassName: gpu.nvidia.com
+      deviceClassName: gpu.nvidia.com # TODO: update this with our deployed device class
       allocationMode: ExactCount
       count: 2 # Number of GPUs needed
 ```
@@ -124,17 +124,60 @@ spec:
     resourceClaimName: shared-two-gpus-claim # References the ResourceClaim above
 ```
 
-#### Node Affinity
-Work pods must run on the nodes of the Group. This is typically done using node selectors (matching the group.timeslice.io/<group-id> label on the nodes):
+#### Required Node Selectors & Tolerations
+
+To ensure work pods are scheduled on the correct isolated accelerator nodes, you must configure both `nodeSelector` and `tolerations` in the pod specification.
+
+##### Node Selectors
+Work pods must target nodes that are enabled for time-slicing and belong to their specific resource Group:
+
 ```yaml
 spec:
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: group.timeslice.io/group-ab-sampler # Matches the node Group label
-            operator: Exists
+  nodeSelector:
+    group.timeslice.io/group-ab-sampler: "true" # Matches the node Group label
+```
+
+##### Tolerations
+Because time-slicing nodes are tainted to prevent regular workloads from scheduling on them, work pods must explicitly tolerate the time-slicing taint:
+
+```yaml
+spec:
+  tolerations:
+  - key: "timeslice.io/shared"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+```
+
+#### Complete Pod Configuration Example
+
+Here is a complete example of a Pod manifest incorporating all the required configuration elements:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-accelerator-work-pod
+  labels:
+    timeslice.io/job-id: "job-a"
+    timeslice.io/group: "group-ab-sampler"
+spec:
+  containers:
+  - name: workload-container
+    image: my-workload-image:latest
+    resources:
+      claims:
+      - name: accelerator
+  resourceClaims:
+  - name: accelerator
+    resourceClaimName: shared-two-gpus-claim # References an external ResourceClaim
+  nodeSelector:
+    group.timeslice.io/group-ab-sampler: "true" # Matches the node Group label
+  tolerations:
+  - key: "timeslice.io/shared"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
 ```
 
 ### Job Logic & Orchestration (Code)
