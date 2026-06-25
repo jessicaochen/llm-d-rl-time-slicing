@@ -44,13 +44,12 @@ with SnapshotAgentClient(endpoint="localhost:9001") as client:
 To generate gRPC stubs for the Snapshot Agent:
 
 ```bash
+# Run from pkg/client/python directory
 python3 -m grpc_tools.protoc \
-    -I../../snapshot-agent/api/v1alpha1 \
-    --python_out=timeslice/snapshot_agent \
-    --grpc_python_out=timeslice/snapshot_agent \
-    ../../snapshot-agent/api/v1alpha1/snapshot_agent.proto
+    -Itimeslice/snapshot_agent=../../snapshot-agent/api/v1alpha1 \
+    --python_out=. \
+    --grpc_python_out=. \
+    timeslice/snapshot_agent/snapshot_agent.proto
 ```
-
-*Note: You may need to fix the imports in the generated files (e.g., `import snapshot_agent_pb2 as snapshot__agent__pb2` -> `from . import snapshot_agent_pb2 as snapshot__agent__pb2`).*
 
 To generate stubs for the Accelerator Orchestrator, see the [Orchestrator README](timeslice/orchestrator/README.md#development).
