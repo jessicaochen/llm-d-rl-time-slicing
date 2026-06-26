@@ -204,75 +204,80 @@ func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) bool {
 	fmt.Println()
 
 	// 3. Verify Node Labels
-	var nodePassed bool
-	var nodeDetails []string
-
-	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		nodePassed = false
-		nodeDetails = []string{fmt.Sprintf("Error listing nodes: %v", err)}
-	} else {
-		const nodeLabelPrefix = "group.timeslice.io/"
-		type LabeledNodeInfo struct {
-			Name  string
-			Group string
-		}
-		var labeledNodes []LabeledNodeInfo
-
-		for i := range nodes.Items {
-			node := &nodes.Items[i]
-			for k, v := range node.Labels {
-				if strings.HasPrefix(k, nodeLabelPrefix) && v == "true" {
-					group := strings.TrimPrefix(k, nodeLabelPrefix)
-					labeledNodes = append(labeledNodes, LabeledNodeInfo{
-						Name:  node.Name,
-						Group: group,
-					})
-					break
-				}
-			}
-		}
-
-		if len(labeledNodes) > 0 {
-			// Check one-node-per-group restriction
-			groupToNodes := make(map[string][]string)
-			for _, ln := range labeledNodes {
-				groupToNodes[ln.Group] = append(groupToNodes[ln.Group], ln.Name)
-			}
-
-			var violationDetails []string
-			for group, nodeNames := range groupToNodes {
-				if len(nodeNames) > 1 {
-					violationDetails = append(violationDetails, fmt.Sprintf("Violation: Group %q has %d nodes: %s (max 1 node per group supported due to DRA)", group, len(nodeNames), strings.Join(nodeNames, ", ")))
-				}
-			}
-
-			if len(violationDetails) == 0 {
-				nodePassed = true
-				nodeDetails = make([]string, 0, 1+len(labeledNodes))
-				nodeDetails = append(nodeDetails, fmt.Sprintf("Status: Found %d labeled nodes", len(labeledNodes)))
-				for _, ln := range labeledNodes {
-					nodeDetails = append(nodeDetails, fmt.Sprintf("Node: %s (group: %s)", ln.Name, ln.Group))
-				}
-			} else {
-				nodePassed = false
-				nodeDetails = make([]string, 0, 1+len(labeledNodes)+len(violationDetails))
-				nodeDetails = append(nodeDetails, fmt.Sprintf("Status: Found %d labeled nodes with group violations", len(labeledNodes)))
-				for _, ln := range labeledNodes {
-					nodeDetails = append(nodeDetails, fmt.Sprintf("Node: %s (group: %s)", ln.Name, ln.Group))
-				}
-				nodeDetails = append(nodeDetails, violationDetails...)
-			}
-		} else {
-			nodePassed = false
-			nodeDetails = []string{
-				"Status: Found 0 labeled nodes",
-				"No nodes found with timeslice group label (group.timeslice.io/<group>=true)",
-			}
-		}
-	}
+	nodePassed, nodeDetails := verifyNodeLabels(ctx, clientset)
 	printResult("Labeled GPU Nodes", nodePassed, nodeDetails)
 	fmt.Println()
 
 	return overallPassed
+}
+
+// verifyNodeLabels checks node labels and enforces the one-node-per-group restriction.
+//
+//nolint:gocritic // named returns are forbidden by nonamedreturns linter in this project
+func verifyNodeLabels(ctx context.Context, clientset kubernetes.Interface) (bool, []string) {
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return false, []string{fmt.Sprintf("Error listing nodes: %v", err)}
+	}
+
+	const nodeLabelPrefix = "group.timeslice.io/"
+	type LabeledNodeInfo struct {
+		Name  string
+		Group string
+	}
+	var labeledNodes []LabeledNodeInfo
+
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		for k, v := range node.Labels {
+			if strings.HasPrefix(k, nodeLabelPrefix) && v == "true" {
+				group := strings.TrimPrefix(k, nodeLabelPrefix)
+				labeledNodes = append(labeledNodes, LabeledNodeInfo{
+					Name:  node.Name,
+					Group: group,
+				})
+				break
+			}
+		}
+	}
+
+	if len(labeledNodes) == 0 {
+		return false, []string{
+			"Status: Found 0 labeled nodes",
+			"No nodes found with timeslice group label (group.timeslice.io/<group>=true)",
+		}
+	}
+
+	// Check one-node-per-group restriction
+	groupToNodes := make(map[string][]string)
+	for _, ln := range labeledNodes {
+		groupToNodes[ln.Group] = append(groupToNodes[ln.Group], ln.Name)
+	}
+
+	var violationDetails []string
+	for group, nodeNames := range groupToNodes {
+		if len(nodeNames) > 1 {
+			violationDetails = append(violationDetails, fmt.Sprintf(
+				"Violation: Group %q has %d nodes: %s (max 1 node per group supported due to DRA)",
+				group, len(nodeNames), strings.Join(nodeNames, ", "),
+			))
+		}
+	}
+
+	if len(violationDetails) > 0 {
+		nodeDetails := make([]string, 0, 1+len(labeledNodes)+len(violationDetails))
+		nodeDetails = append(nodeDetails, fmt.Sprintf("Status: Found %d labeled nodes with group violations", len(labeledNodes)))
+		for _, ln := range labeledNodes {
+			nodeDetails = append(nodeDetails, fmt.Sprintf("Node: %s (group: %s)", ln.Name, ln.Group))
+		}
+		nodeDetails = append(nodeDetails, violationDetails...)
+		return false, nodeDetails
+	}
+
+	nodeDetails := make([]string, 0, 1+len(labeledNodes))
+	nodeDetails = append(nodeDetails, fmt.Sprintf("Status: Found %d labeled nodes", len(labeledNodes)))
+	for _, ln := range labeledNodes {
+		nodeDetails = append(nodeDetails, fmt.Sprintf("Node: %s (group: %s)", ln.Name, ln.Group))
+	}
+	return true, nodeDetails
 }

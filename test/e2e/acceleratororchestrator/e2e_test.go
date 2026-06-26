@@ -3,6 +3,7 @@ package acceleratororchestrator
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/store"
 	google_grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/api/resource/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -389,6 +390,7 @@ func StartFakeScheduler(ctx context.Context, clientset *fake.Clientset) {
 				_, err = clientset.ResourceV1().ResourceClaims("default").UpdateStatus(ctx, claimCopy, metav1.UpdateOptions{})
 				if err != nil {
 					// Fallback to regular update if UpdateStatus fails in fake client
+					//nolint:errcheck // Ignore error from fallback update in fake client
 					_, _ = clientset.ResourceV1().ResourceClaims("default").Update(ctx, claimCopy, metav1.UpdateOptions{})
 				}
 			}

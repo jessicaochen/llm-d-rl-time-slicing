@@ -26,15 +26,15 @@ type Logger interface {
 
 // FakeRLJob simulates a Reinforcement Learning job that orchestrates samplers and trainers.
 type FakeRLJob struct {
-	name        string
-	client      pb.AcceleratorOrchestratorServiceClient
-	clientset   kubernetes.Interface
-	iterations  int
+	name          string
+	client        pb.AcceleratorOrchestratorServiceClient
+	clientset     kubernetes.Interface
+	iterations    int
 	t             Logger
 	createdPods   []string // track created pod names for cleanup
 	createdClaims []string // track created claim names for cleanup
 	mu            sync.Mutex
-	podFactory  *PodFactory
+	podFactory    *PodFactory
 
 	// Callbacks to control sampling/training behavior/duration
 	OnSampling func(ctx context.Context)
@@ -286,20 +286,21 @@ func (f *FakeRLJob) deployPods(ctx context.Context, groupID string) error {
 		}
 		pod.Spec.NodeSelector[fmt.Sprintf("group.timeslice.io/%s", groupID)] = "true"
 
-		// Add toleration for timeslice.io/shared taint
-		pod.Spec.Tolerations = append(pod.Spec.Tolerations, corev1.Toleration{
-			Key:      "timeslice.io/shared",
-			Operator: corev1.TolerationOpEqual,
-			Value:    "true",
-			Effect:   corev1.TaintEffectNoSchedule,
-		})
-		// Add toleration for default GKE GPU taint
-		pod.Spec.Tolerations = append(pod.Spec.Tolerations, corev1.Toleration{
-			Key:      "nvidia.com/gpu",
-			Operator: corev1.TolerationOpEqual,
-			Value:    "present",
-			Effect:   corev1.TaintEffectNoSchedule,
-		})
+		// Add tolerations for timeslice.io/shared and default GKE GPU taints
+		pod.Spec.Tolerations = append(pod.Spec.Tolerations,
+			corev1.Toleration{
+				Key:      "timeslice.io/shared",
+				Operator: corev1.TolerationOpEqual,
+				Value:    "true",
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+			corev1.Toleration{
+				Key:      "nvidia.com/gpu",
+				Operator: corev1.TolerationOpEqual,
+				Value:    "present",
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+		)
 
 		// Reference the ResourceClaim in Pod Spec
 		pod.Spec.Containers[0].Resources.Claims = []corev1.ResourceClaim{
@@ -334,27 +335,30 @@ func (f *FakeRLJob) deployPods(ctx context.Context, groupID string) error {
 		// Wait for scheduling and validate node
 		f.t.Logf("[Job %s] Waiting for pod %s to be scheduled...", f.name, podName)
 		err = wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 30*time.Second, true, func(ctx context.Context) (bool, error) {
-			p, err := f.clientset.CoreV1().Pods("default").Get(ctx, podName, metav1.GetOptions{})
+			pod, err := f.clientset.CoreV1().Pods("default").Get(ctx, podName, metav1.GetOptions{})
 			if err != nil {
 				return false, err
 			}
-			if p.Spec.NodeName == "" {
+			if pod.Spec.NodeName == "" {
 				return false, nil // still pending
 			}
 
 			// Verify it is one of the expected nodes for the group
 			isExpectedNode := false
 			for j := range nodes.Items {
-				if p.Spec.NodeName == nodes.Items[j].Name {
+				if pod.Spec.NodeName == nodes.Items[j].Name {
 					isExpectedNode = true
 					break
 				}
 			}
 			if !isExpectedNode {
-				return false, fmt.Errorf("pod %s scheduled to unexpected node %q (expected one of group %s nodes)", podName, p.Spec.NodeName, groupID)
+				return false, fmt.Errorf(
+					"pod %s scheduled to unexpected node %q (expected one of group %s nodes)",
+					podName, pod.Spec.NodeName, groupID,
+				)
 			}
 
-			f.t.Logf("[Job %s] Pod %s successfully scheduled to expected node %s", f.name, podName, p.Spec.NodeName)
+			f.t.Logf("[Job %s] Pod %s successfully scheduled to expected node %s", f.name, podName, pod.Spec.NodeName)
 			return true, nil
 		})
 		if err != nil {

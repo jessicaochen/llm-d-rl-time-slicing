@@ -148,13 +148,14 @@ var orchestratorTestCmd = &cobra.Command{
 			for _, jobID := range testJobs {
 				// We ignore errors because the job might not hold the lock,
 				// in which case Yield returns PermissionDenied, which is expected.
+				//nolint:errcheck // Pre-clean is best-effort, ignore if job doesn't hold lock
 				_, _ = client.Yield(ctx, &pb.YieldRequest{
 					GroupId: groupID,
 					JobId:   jobID,
 				})
 			}
 		}
-		fmt.Println("Pre-clean complete.\n")
+		fmt.Printf("Pre-clean complete.\n\n")
 
 		// 6. STEP 4: Run E2E Scenarios
 		fmt.Println("=== Step 4: Running E2E Scenarios ===")
