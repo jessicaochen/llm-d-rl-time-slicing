@@ -9,8 +9,10 @@ import (
 	"github.com/google/uuid"
 	pb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	resourcev1 "k8s.io/api/resource/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -28,9 +30,10 @@ type FakeRLJob struct {
 	client      pb.AcceleratorOrchestratorServiceClient
 	clientset   kubernetes.Interface
 	iterations  int
-	t           Logger
-	createdPods []string // track created pod names for cleanup
-	mu          sync.Mutex
+	t             Logger
+	createdPods   []string // track created pod names for cleanup
+	createdClaims []string // track created claim names for cleanup
+	mu            sync.Mutex
 	podFactory  *PodFactory
 
 	// Callbacks to control sampling/training behavior/duration
@@ -237,9 +240,37 @@ func (f *FakeRLJob) deployPods(ctx context.Context, groupID string) error {
 		return fmt.Errorf("no nodes found for group %s", groupID)
 	}
 
-	for i := range nodes.Items {
-		node := &nodes.Items[i]
+	for range nodes.Items {
 		podName := fmt.Sprintf("pod-%s-%s-%s", f.name, groupID, uuid.NewString()[:8])
+		claimName := fmt.Sprintf("claim-%s", podName)
+
+		// 1. Create ResourceClaim for DRA
+		claim := &resourcev1.ResourceClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      claimName,
+				Namespace: "default",
+			},
+			Spec: resourcev1.ResourceClaimSpec{
+				Devices: resourcev1.DeviceClaim{
+					Requests: []resourcev1.DeviceRequest{
+						{
+							Name: "gpu",
+							Exactly: &resourcev1.ExactDeviceRequest{
+								DeviceClassName: "gpu.nvidia.com",
+								AllocationMode:  resourcev1.DeviceAllocationModeExactCount,
+								Count:           1,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		_, err := f.clientset.ResourceV1().ResourceClaims("default").Create(ctx, claim, metav1.CreateOptions{})
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			return fmt.Errorf("failed to create resource claim %s: %w", claimName, err)
+		}
+		f.t.Logf("[Job %s] Created ResourceClaim %s", f.name, claimName)
 
 		// Pull pod definition from factory
 		pod := f.podFactory.GetPod(groupID)
@@ -247,7 +278,41 @@ func (f *FakeRLJob) deployPods(ctx context.Context, groupID string) error {
 		// Customize for this run
 		pod.Name = podName
 		pod.Namespace = "default"
-		pod.Spec.NodeName = node.Name
+		pod.Spec.NodeName = "" // Let scheduler handle it
+
+		// Set NodeSelector to target the group
+		if pod.Spec.NodeSelector == nil {
+			pod.Spec.NodeSelector = make(map[string]string)
+		}
+		pod.Spec.NodeSelector[fmt.Sprintf("group.timeslice.io/%s", groupID)] = "true"
+
+		// Add toleration for timeslice.io/shared taint
+		pod.Spec.Tolerations = append(pod.Spec.Tolerations, corev1.Toleration{
+			Key:      "timeslice.io/shared",
+			Operator: corev1.TolerationOpEqual,
+			Value:    "true",
+			Effect:   corev1.TaintEffectNoSchedule,
+		})
+		// Add toleration for default GKE GPU taint
+		pod.Spec.Tolerations = append(pod.Spec.Tolerations, corev1.Toleration{
+			Key:      "nvidia.com/gpu",
+			Operator: corev1.TolerationOpEqual,
+			Value:    "present",
+			Effect:   corev1.TaintEffectNoSchedule,
+		})
+
+		// Reference the ResourceClaim in Pod Spec
+		pod.Spec.Containers[0].Resources.Claims = []corev1.ResourceClaim{
+			{
+				Name: "gpu-resource",
+			},
+		}
+		pod.Spec.ResourceClaims = []corev1.PodResourceClaim{
+			{
+				Name:              "gpu-resource",
+				ResourceClaimName: &claimName,
+			},
+		}
 
 		// Inject timeslice labels (must remain in fake_rl_job.go)
 		if pod.Labels == nil {
@@ -256,19 +321,50 @@ func (f *FakeRLJob) deployPods(ctx context.Context, groupID string) error {
 		pod.Labels["timeslice.io/group"] = groupID
 		pod.Labels["timeslice.io/job-id"] = f.name
 
-		_, err := f.clientset.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
+		_, err = f.clientset.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
 		if err != nil {
 			if !k8serrors.IsAlreadyExists(err) {
 				return fmt.Errorf("failed to create pod %s: %w", podName, err)
 			}
 			f.t.Logf("[Job %s] Pod %s already exists (pre-deployed)", f.name, podName)
 		} else {
-			f.t.Logf("[Job %s] Deployed pod %s on node %s", f.name, podName, node.Name)
+			f.t.Logf("[Job %s] Deployed pod %s (pending scheduling)", f.name, podName)
+		}
+
+		// Wait for scheduling and validate node
+		f.t.Logf("[Job %s] Waiting for pod %s to be scheduled...", f.name, podName)
+		err = wait.PollUntilContextTimeout(ctx, 500*time.Millisecond, 30*time.Second, true, func(ctx context.Context) (bool, error) {
+			p, err := f.clientset.CoreV1().Pods("default").Get(ctx, podName, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			if p.Spec.NodeName == "" {
+				return false, nil // still pending
+			}
+
+			// Verify it is one of the expected nodes for the group
+			isExpectedNode := false
+			for j := range nodes.Items {
+				if p.Spec.NodeName == nodes.Items[j].Name {
+					isExpectedNode = true
+					break
+				}
+			}
+			if !isExpectedNode {
+				return false, fmt.Errorf("pod %s scheduled to unexpected node %q (expected one of group %s nodes)", podName, p.Spec.NodeName, groupID)
+			}
+
+			f.t.Logf("[Job %s] Pod %s successfully scheduled to expected node %s", f.name, podName, p.Spec.NodeName)
+			return true, nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to verify pod scheduling for %s: %w", podName, err)
 		}
 
 		// Always track for cleanup
 		f.mu.Lock()
 		f.createdPods = append(f.createdPods, podName)
+		f.createdClaims = append(f.createdClaims, claimName)
 		f.mu.Unlock()
 	}
 
@@ -279,6 +375,7 @@ func (f *FakeRLJob) cleanupPods(ctx context.Context) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	// 1. Delete Pods
 	for _, podName := range f.createdPods {
 		err := f.clientset.CoreV1().Pods("default").Delete(ctx, podName, metav1.DeleteOptions{})
 		if err != nil {
@@ -290,5 +387,19 @@ func (f *FakeRLJob) cleanupPods(ctx context.Context) error {
 		}
 	}
 	f.createdPods = nil
+
+	// 2. Delete ResourceClaims
+	for _, claimName := range f.createdClaims {
+		err := f.clientset.ResourceV1().ResourceClaims("default").Delete(ctx, claimName, metav1.DeleteOptions{})
+		if err != nil {
+			if !k8serrors.IsNotFound(err) {
+				f.t.Errorf("[Job %s] Failed to delete resource claim %s: %v", f.name, claimName, err)
+			}
+		} else {
+			f.t.Logf("[Job %s] Deleted resource claim %s", f.name, claimName)
+		}
+	}
+	f.createdClaims = nil
+
 	return nil
 }

@@ -14,9 +14,12 @@ import (
 	"github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/store"
 	google_grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"fmt"
 	corev1 "k8s.io/api/core/v1"
+	resourcev1 "k8s.io/api/resource/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/util/workqueue"
@@ -29,6 +32,7 @@ func TestE2E_SingleRLJob(t *testing.T) {
 
 	// 1. Initialize Fake Kubernetes Clientset
 	clientset := fake.NewClientset()
+	go StartFakeScheduler(ctx, clientset)
 
 	// Populate Fake Kubernetes with Nodes BEFORE starting informers to avoid startup races
 	nodeSampler := &corev1.Node{
@@ -159,6 +163,7 @@ func TestE2E_QueuedRLJobs(t *testing.T) {
 
 	// 1. Initialize Fake Kubernetes Clientset
 	clientset := fake.NewClientset()
+	go StartFakeScheduler(ctx, clientset)
 
 	// Populate Fake Kubernetes with Nodes BEFORE starting informers to avoid startup races
 	nodeSampler := &corev1.Node{
@@ -279,5 +284,114 @@ func TestE2E_QueuedRLJobs(t *testing.T) {
 	// Run Scenario
 	if err := RunQueuedRLJobsScenario(ctx, clientset, client, t); err != nil {
 		t.Fatalf("Scenario failed: %v", err)
+	}
+}
+
+// StartFakeScheduler simulates a K8s scheduler and DRA driver for the fake clientset.
+// It watches for unscheduled pods, binds them to a matching node, and allocates their ResourceClaims.
+func StartFakeScheduler(ctx context.Context, clientset *fake.Clientset) {
+	podWatch, err := clientset.CoreV1().Pods("default").Watch(ctx, metav1.ListOptions{})
+	if err != nil {
+		return
+	}
+	defer podWatch.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event, ok := <-podWatch.ResultChan():
+			if !ok {
+				return
+			}
+			if event.Type != watch.Added && event.Type != watch.Modified {
+				continue
+			}
+			pod, ok := event.Object.(*corev1.Pod)
+			if !ok {
+				continue
+			}
+
+			// If already scheduled, skip
+			if pod.Spec.NodeName != "" {
+				continue
+			}
+
+			// Find matching node based on group label
+			groupID := pod.Labels["timeslice.io/group"]
+			if groupID == "" {
+				continue
+			}
+
+			nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+			if err != nil {
+				continue
+			}
+
+			var targetNode *corev1.Node
+			selectorKey := fmt.Sprintf("group.timeslice.io/%s", groupID)
+			for i := range nodes.Items {
+				node := &nodes.Items[i]
+				if node.Labels[selectorKey] == "true" {
+					targetNode = node
+					break
+				}
+			}
+
+			if targetNode == nil {
+				continue
+			}
+
+			// 1. Update pod with NodeName and Running status (Simulate Scheduler)
+			podCopy := pod.DeepCopy()
+			podCopy.Spec.NodeName = targetNode.Name
+			podCopy.Status.Phase = corev1.PodRunning
+
+			_, err = clientset.CoreV1().Pods("default").Update(ctx, podCopy, metav1.UpdateOptions{})
+			if err != nil {
+				continue
+			}
+
+			// 2. Allocate the ResourceClaim if referenced (Simulate DRA Driver)
+			for _, pc := range pod.Spec.ResourceClaims {
+				if pc.ResourceClaimName == nil {
+					continue
+				}
+				claimName := *pc.ResourceClaimName
+				claim, err := clientset.ResourceV1().ResourceClaims("default").Get(ctx, claimName, metav1.GetOptions{})
+				if err != nil {
+					continue
+				}
+
+				claimCopy := claim.DeepCopy()
+				claimCopy.Status = resourcev1.ResourceClaimStatus{
+					Allocation: &resourcev1.AllocationResult{
+						Devices: resourcev1.DeviceAllocationResult{
+							Results: []resourcev1.DeviceRequestAllocationResult{
+								{
+									Request: "gpu",
+									Driver:  "gpu.nvidia.com",
+									Pool:    targetNode.Name,
+									Device:  "gpu-0",
+								},
+							},
+						},
+					},
+					ReservedFor: []resourcev1.ResourceClaimConsumerReference{
+						{
+							Resource: "pods",
+							Name:     pod.Name,
+							UID:      pod.UID,
+						},
+					},
+				}
+
+				_, err = clientset.ResourceV1().ResourceClaims("default").UpdateStatus(ctx, claimCopy, metav1.UpdateOptions{})
+				if err != nil {
+					// Fallback to regular update if UpdateStatus fails in fake client
+					_, _ = clientset.ResourceV1().ResourceClaims("default").Update(ctx, claimCopy, metav1.UpdateOptions{})
+				}
+			}
+		}
 	}
 }

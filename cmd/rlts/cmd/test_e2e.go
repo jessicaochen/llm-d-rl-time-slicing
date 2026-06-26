@@ -140,6 +140,22 @@ var orchestratorTestCmd = &cobra.Command{
 		}
 		fmt.Printf("Connected successfully.\n\n")
 
+		// Pre-clean: Force yield any locks from previous failed runs for the test jobs
+		fmt.Println("=== Pre-cleaning leaked locks from previous runs ===")
+		testJobs := []string{"my-rl-job", "job-a", "job-b"}
+		testGroups := []string{"samplers", "trainers"}
+		for _, groupID := range testGroups {
+			for _, jobID := range testJobs {
+				// We ignore errors because the job might not hold the lock,
+				// in which case Yield returns PermissionDenied, which is expected.
+				_, _ = client.Yield(ctx, &pb.YieldRequest{
+					GroupId: groupID,
+					JobId:   jobID,
+				})
+			}
+		}
+		fmt.Println("Pre-clean complete.\n")
+
 		// 6. STEP 4: Run E2E Scenarios
 		fmt.Println("=== Step 4: Running E2E Scenarios ===")
 		cliLogger := &cliLogger{}
