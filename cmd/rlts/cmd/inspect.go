@@ -234,11 +234,34 @@ func verifyCluster(ctx context.Context, clientset *kubernetes.Clientset) bool {
 		}
 
 		if len(labeledNodes) > 0 {
-			nodePassed = true
-			nodeDetails = make([]string, 0, 1+len(labeledNodes))
-			nodeDetails = append(nodeDetails, fmt.Sprintf("Status: Found %d labeled nodes", len(labeledNodes)))
+			// Check one-node-per-group restriction
+			groupToNodes := make(map[string][]string)
 			for _, ln := range labeledNodes {
-				nodeDetails = append(nodeDetails, fmt.Sprintf("Node: %s (group: %s)", ln.Name, ln.Group))
+				groupToNodes[ln.Group] = append(groupToNodes[ln.Group], ln.Name)
+			}
+
+			var violationDetails []string
+			for group, nodeNames := range groupToNodes {
+				if len(nodeNames) > 1 {
+					violationDetails = append(violationDetails, fmt.Sprintf("Violation: Group %q has %d nodes: %s (max 1 node per group supported due to DRA)", group, len(nodeNames), strings.Join(nodeNames, ", ")))
+				}
+			}
+
+			if len(violationDetails) == 0 {
+				nodePassed = true
+				nodeDetails = make([]string, 0, 1+len(labeledNodes))
+				nodeDetails = append(nodeDetails, fmt.Sprintf("Status: Found %d labeled nodes", len(labeledNodes)))
+				for _, ln := range labeledNodes {
+					nodeDetails = append(nodeDetails, fmt.Sprintf("Node: %s (group: %s)", ln.Name, ln.Group))
+				}
+			} else {
+				nodePassed = false
+				nodeDetails = make([]string, 0, 1+len(labeledNodes)+len(violationDetails))
+				nodeDetails = append(nodeDetails, fmt.Sprintf("Status: Found %d labeled nodes with group violations", len(labeledNodes)))
+				for _, ln := range labeledNodes {
+					nodeDetails = append(nodeDetails, fmt.Sprintf("Node: %s (group: %s)", ln.Name, ln.Group))
+				}
+				nodeDetails = append(nodeDetails, violationDetails...)
 			}
 		} else {
 			nodePassed = false
