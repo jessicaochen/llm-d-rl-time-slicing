@@ -11,11 +11,23 @@ acceleratororchestrator:
 # Override values for the snapshot-agent subchart
 snapshot-agent:
   enabled: true
-  # You can add specific overrides here
+  image:
+    tag: latest
+  nodeSelector:
+    cloud.google.com/gke-gpu: "true"
+  tolerations:
+    - key: "nvidia.com/gpu"
+      operator: "Equal"
+      value: "present"
+      effect: "NoSchedule"
+    - key: "timeslice.io/shared"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
 
 # Override values for the nvidia-dra-driver-gpu subchart
 nvidia-dra-driver-gpu:
-  enabled: true
+  enabled: false
   namespaceOverride: "timeslice-system"
   nvidiaDriverRoot: "/home/kubernetes/bin/nvidia/" # Use "/opt/nvidia" for Ubuntu nodes
 

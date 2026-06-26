@@ -56,10 +56,10 @@ nvidia-dra-driver-gpu:
 
 The chart automatically creates the `timeslice-system` namespace, and **all** deployed resources (orchestrator, agent, RBAC, etc.) are forced into this namespace regardless of where the Helm release is installed.
 
-To install the chart:
+To install or upgrade the chart:
 
 ```bash
-helm install timeslice .
+helm upgrade --install timeslice .
 ```
 
 This will install the Helm release metadata in your current default namespace, but all Kubernetes resources will be deployed to `timeslice-system`.
@@ -67,16 +67,32 @@ This will install the Helm release metadata in your current default namespace, b
 If you prefer to have the Helm release metadata also reside in the `timeslice-system` namespace, you must use the `--create-namespace` flag (or ensure the namespace exists beforehand):
 
 ```bash
-helm install timeslice . -n timeslice-system --create-namespace
+helm upgrade --install timeslice . -n timeslice-system --create-namespace
 ```
 
-To install with custom values:
+### 4. Deploying with a Custom Registry (Development & Validation)
+
+During development, you can override the image repositories to use your own custom registry (e.g., Google Artifact Registry) while keeping all other default configurations (like GPU node selectors and tolerations):
 
 ```bash
-helm install timeslice . -f my-values.yaml
+helm upgrade --install timeslice . \
+  --set acceleratororchestrator.image.repository=your-custom-registry.com/your-project/acceleratororchestrator \
+  --set snapshot-agent.image.repository=your-custom-registry.com/your-project/snapshot-agent
 ```
 
-### 4. Uninstallation
+### 5. Customizing for Non-GKE GPU Clusters
+
+By default, the parent chart is pre-configured with GKE-specific defaults (e.g., node selectors for GKE GPU nodes and GKE-specific volume mounts). If you are deploying to a non-GKE cluster, you may need to override these values. See the [Snapshot Agent README](./snapshot-agent/README.md) for detailed instructions.
+
+### 6. Installation with custom values
+
+If you have a custom values file:
+
+```bash
+helm upgrade --install timeslice . -f my-values.yaml
+```
+
+### 7. Uninstallation
 
 To uninstall/delete the `timeslice` deployment:
 
