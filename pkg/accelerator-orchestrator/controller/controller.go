@@ -268,7 +268,8 @@ func (c *Controller) reconcileNode(ctx context.Context, groupID, nodeName, activ
 
 	// 3. Ensure no other jobs have their context loaded
 	for jobID, state := range agentJobStates {
-		if jobID == activeJobID || state != pb.SnapshotAgentJobState_STATE_RUNNING {
+		isLoaded := state == pb.SnapshotAgentJobState_STATE_RUNNING || state == pb.SnapshotAgentJobState_STATE_IDLE
+		if jobID == activeJobID || !isLoaded {
 			continue
 		}
 
@@ -366,7 +367,7 @@ func (c *Controller) isJobLoaded(ctx context.Context, group *store.Group, jobID 
 		}
 
 		switch state {
-		case pb.SnapshotAgentJobState_STATE_RUNNING:
+		case pb.SnapshotAgentJobState_STATE_RUNNING, pb.SnapshotAgentJobState_STATE_IDLE:
 			// Safe, checked for conflicts already
 		case pb.SnapshotAgentJobState_STATE_UNSPECIFIED:
 			if nodeRunningJob[node] != "" {
