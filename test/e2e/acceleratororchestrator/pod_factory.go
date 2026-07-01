@@ -38,24 +38,24 @@ func NewPodFactory() *PodFactory {
 			TerminationGracePeriodSeconds: &gracePeriodSec,
 			Containers: []corev1.Container{
 				{
-					Name:  "dummy",
-					Image: "pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime",
-					Command: []string{
-						"python3",
-						"-c",
-						"import torch, time, sys\n" +
-							"try:\n" +
-							"    if not torch.cuda.is_available():\n" +
-							"        print('CUDA not available', file=sys.stderr, flush=True)\n" +
-							"        sys.exit(1)\n" +
-							"    x = torch.randn(1000, 1000, device='cuda')\n" +
-							"    print('CUDA context created and tensor allocated', flush=True)\n" +
-							"    while True:\n" +
-							"        x = x + 0.0001\n" +
-							"        time.sleep(1)\n" +
-							"except Exception as e:\n" +
-							"    print('Error:', e, file=sys.stderr, flush=True)\n" +
-							"    sys.exit(1)",
+					Name:    "pytorch-container",
+					Image:   "pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime",
+					Command: []string{"python3", "-c"},
+					Args: []string{
+						"import torch, time\n" +
+							"# Phase 1: Allocate 90% VRAM & do active work\n" +
+							"total_bytes = torch.cuda.get_device_properties(0).total_memory\n" +
+							"alloc_bytes = int(total_bytes * 0.90)\n" +
+							"print(f\"Allocating 90% VRAM: {alloc_bytes / 1e9:.2f} GB\")\n" +
+							"# Allocate physical GPU memory\n" +
+							"tensor = torch.zeros(alloc_bytes // 4, dtype=torch.float32, device='cuda')\n" +
+							"# Perform active CUDA kernel work\n" +
+							"x = torch.matmul(tensor[:1000].reshape(1000, 1), tensor[:1000].reshape(1, 1000))\n" +
+							"# Phase 2: Acquiesce (flush CUDA stream & sleep quiet)\n" +
+							"torch.cuda.synchronize()\n" +
+							"print(\"GPU work completed. Entering quiet idle state holding VRAM...\")\n" +
+							"while True:\n" +
+							"    time.sleep(1)\n",
 					},
 					ImagePullPolicy: corev1.PullIfNotPresent,
 				},
