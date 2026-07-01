@@ -1,6 +1,12 @@
 # Time-Slicing Integration Guide for Slime Workloads
 
-This guide provides step-by-step instructions on how to integrate and deploy **Slime** (high-performance RL framework for LLMs) with the **llm-d-rl-time-slicing** platform. This allows multiple independent Slime jobs to cooperatively share accelerator (GPU) resource pools, maximizing hardware utilization.
+This guide provides step-by-step instructions on how to integrate and deploy **Slime** (high-performance RL framework for LLMs) with the **llm-d-rl-time-slicing** platform.
+
+### Motivation: Maximizing GPU Utilization
+In traditional disaggregated RL setups, GPUs sit idle whenever worker groups wait for another phase to complete (e.g., trainer GPUs idling during rollout generation, or rollout GPUs idling during policy updates). Cooperative time-slicing enables multiple independent Slime jobs to multiplex physical GPU resource pools concurrently. When one job finishes a phase, its GPU context is checkpointed and evicted, allowing another job to immediately utilize the hardware—significantly driving up GPU duty cycle and overall cluster throughput.
+
+For detailed throughput comparisons, execution timings, and GPU duty cycle metrics, see:
+* **[Slime RL Job Benchmark Results & Performance Data](BENCHMARKS.md)**
 
 ---
 
@@ -26,10 +32,7 @@ Before deploying cooperative time-slicing for Slime, ensure your Kubernetes clus
 * GPU memory capacity must be sufficient to hold the active working set of a single Slime job's trainer or sampler at any one time (since inactive jobs will have their GPU states checkpointed and evicted).
 
 ### Node Labeling for Time-Slice Pools
-The `timeslice` platform relies on node labels to identify resource pools (groups). You must label your GPU nodes based on your Slime execution strategy:
-
-#### A. Decoupled / Pipelined Setup (Recommended)
-If you run trainers and samplers (rollout generation) on separate GPU pools to pipeline execution:
+The `timeslice` platform relies on node labels to identify resource pools (groups). For disaggregated Slime executions, label your GPU nodes accordingly:
 * **Sampler Nodes**:
   ```bash
   kubectl label nodes <node-name> group.timeslice.io/samplers=true
@@ -37,13 +40,6 @@ If you run trainers and samplers (rollout generation) on separate GPU pools to p
 * **Trainer Nodes**:
   ```bash
   kubectl label nodes <node-name> group.timeslice.io/trainers=true
-  ```
-
-#### B. Colocated Setup
-If trainers and samplers run on the same GPUs:
-* **Shared Nodes**:
-  ```bash
-  kubectl label nodes <node-name> group.timeslice.io/shared-gpus=true
   ```
 
 ---
@@ -102,69 +98,112 @@ Verify that the orchestrator and agents are running and healthy:
 
 ## 3. Code Integration with Slime
 
-To participate in cooperative time-slicing, the Slime training loop must explicitly request and yield access to the GPU resource pools at its natural phase boundaries.
+To participate in cooperative time-slicing, the Slime training loop driver requests and yields access to the GPU resource pools at its natural phase boundaries.
 
-We use the lightweight `timeslice` Python client library to handle gRPC communication with the Accelerator Orchestrator.
+Because worker processes (SGLang engines and Megatron-LM trainer actors) run as background servers, **only the main RL loop driver script (`train.py`)** needs to communicate with the Accelerator Orchestrator via `OrchestratorClient`.
 
-### Step 1: Initialize the Orchestrator Client
-In your Slime orchestration or trainer entrypoint script, initialize the `OrchestratorClient`.
+### Step 1: Add Time-Slicing Command-Line Arguments
+Add time-slicing configuration options to `slime/utils/arguments.py`:
 
-<!-- TDB: Less than 98% confident in the exact entrypoint file structure of the Slime repository. Update the file path/class name below once the Slime repository layout is verified. -->
 ```python
-from timeslice import OrchestratorClient
-
-# Address of the orchestrator service in the Kubernetes cluster
-ORCHESTRATOR_ADDR = "timeslice-acceleratororchestrator.timeslice-system.svc.cluster.local:50051"
-
-# Initialize clients for both the sampling and training GPU groups
-sampler_client = OrchestratorClient(
-    target=ORCHESTRATOR_ADDR,
-    group_id="samplers"
+parser.add_argument(
+    "--enable-timeslice",
+    action="store_true",
+    default=False,
+    help="Enable llm-d-rl-time-slicing cooperative GPU grant acquisition.",
 )
-
-trainer_client = OrchestratorClient(
-    target=ORCHESTRATOR_ADDR,
-    group_id="trainers"
+parser.add_argument(
+    "--timeslice-orchestrator-addr",
+    type=str,
+    default="timeslice-acceleratororchestrator.timeslice-system.svc.cluster.local:50051",
+    help="Address of the Accelerator Orchestrator gRPC service.",
+)
+parser.add_argument(
+    "--timeslice-job-id",
+    type=str,
+    default=None,
+    help="Unique job identifier for the Accelerator Orchestrator.",
+)
+parser.add_argument(
+    "--timeslice-sampler-group",
+    type=str,
+    default="group-slime-sampler",
+    help="Accelerator Orchestrator time-slice group for rollout samplers.",
+)
+parser.add_argument(
+    "--timeslice-trainer-group",
+    type=str,
+    default="group-slime-trainer",
+    help="Accelerator Orchestrator time-slice group for trainer actors.",
 )
 ```
 
-### Step 2: Wrap the Training and Rollout Phases
-Modify your main RL loop to acquire and release the resource locks. The client library provides a clean context manager (`lock()`) that handles acquisition (blocking until available) and release automatically.
+### Step 2: Initialize `OrchestratorClient` in `train.py`
+In `train.py`, instantiate clients for both the sampler and trainer GPU groups when `--enable-timeslice` is passed:
 
-#### Decoupled / Pipelined Loop Example:
 ```python
 import os
+from timeslice import OrchestratorClient
 
-# Unique identifier for this RL run, e.g., from environment variables
-RL_JOB_ID = os.getenv("TIMESLICE_JOB_ID", "slime-job-default")
+def train(args):
+    sampler_client = None
+    trainer_client = None
+    job_id = getattr(args, "timeslice_job_id", None) or os.getenv("TIMESLICE_JOB_ID", "slime-job-default")
 
-def run_rl_loop(num_iterations: int):
-    for iteration in range(num_iterations):
-        print(f"--- Iteration {iteration} ---")
-        
-        # Phase 1: Rollout/Sampling (SGLang)
-        # Blocks until the 'samplers' GPU pool is acquired. 
-        # When entering, the Snapshot Agent restores the GPU context for this job.
-        # When exiting, the GPU context is safely snapshotted and the lock is yielded.
-        with sampler_client.lock(job_id=RL_JOB_ID):
-            print("Acquired samplers GPU lock. Starting rollout generation...")
-            # Trigger SGLang inference
-            run_sglang_generation()
-            
-        # Phase 2: CPU Processing (Reward Evaluation)
-        # During this phase, no GPU lock is held! Other jobs can use the GPUs.
-        process_rewards_on_cpu()
-        
-        # Phase 3: Training (Megatron-LM)
-        # Blocks until the 'trainers' GPU pool is acquired.
-        with trainer_client.lock(job_id=RL_JOB_ID):
-            print("Acquired trainers GPU lock. Starting weight update...")
-            # Trigger Megatron-LM training
-            run_megatron_training_step()
-            
-        # Phase 4: Sync/Evaluation
-        run_weight_sync()
+    if getattr(args, "enable_timeslice", False):
+        addr = getattr(args, "timeslice_orchestrator_addr", "timeslice-acceleratororchestrator.timeslice-system.svc.cluster.local:50051")
+        sampler_group = getattr(args, "timeslice_sampler_group", "group-slime-sampler")
+        trainer_group = getattr(args, "timeslice_trainer_group", "group-slime-trainer")
+
+        sampler_client = OrchestratorClient(target=addr, job_id=job_id, group_id=sampler_group)
+        trainer_client = OrchestratorClient(target=addr, job_id=job_id, group_id=trainer_group)
 ```
+
+### Step 3: Wrap the Training and Rollout Phases
+Acquire and release GPU grants around the rollout collection and policy training loops in `train.py`:
+
+```python
+    for rollout_id in range(args.start_rollout_id, args.num_rollout):
+        # ---------------------------------------------------------
+        # Phase 1: Rollout Generation (Rollout GPU Group)
+        # ---------------------------------------------------------
+        if sampler_client:
+            sampler_client.acquire()
+
+        rollout_data_ref = ray.get(rollout_manager.generate.remote(rollout_id))
+
+        if sampler_client:
+            sampler_client.release()
+
+        # ---------------------------------------------------------
+        # Phase 2: Megatron-LM Policy Training (Trainer GPU Group)
+        # ---------------------------------------------------------
+        if trainer_client:
+            trainer_client.acquire()
+
+        # Run model training and weight updates
+        actor_model.async_train(rollout_id, rollout_data_ref)
+        actor_model.update_weights()
+
+        if trainer_client:
+            trainer_client.release()
+
+    if sampler_client:
+        sampler_client.close()
+    if trainer_client:
+        trainer_client.close()
+```
+
+> [!TIP]
+> For a tested codebase reference branch containing these exact changes, see [jessicaochen/slime (timeslice branch)](https://github.com/jessicaochen/slime/tree/timeslice).
+
+---
+
+## Concrete Deployment & Benchmark Reference
+
+For a step-by-step reproduction guide using RayCluster Kubernetes manifests, disaggregated GRPO launch scripts, and verified performance benchmark numbers, see:
+
+* **[Disaggregated Time-Sliced Slime Deployment Guide](sync-disaggregated-timesliced/README.md)**
 
 ---
 

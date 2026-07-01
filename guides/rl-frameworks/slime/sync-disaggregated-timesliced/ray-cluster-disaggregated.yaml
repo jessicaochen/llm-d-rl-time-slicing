@@ -1,0 +1,112 @@
+apiVersion: ray.io/v1
+kind: RayCluster
+metadata:
+  name: slime-disaggregated-cluster
+  namespace: default
+spec:
+  rayVersion: '2.35.0'
+  headGroupSpec:
+    rayStartParams:
+      dashboard-host: '0.0.0.0'
+      num-gpus: '0'
+    template:
+      spec:
+        nodeSelector:
+          cloud.google.com/gke-nodepool: trainer-gpu-pool
+        tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Equal"
+          value: "present"
+          effect: "NoSchedule"
+        - key: "timeslice.io/shared"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+        containers:
+        - name: ray-head
+          image: slimerl/slime:latest
+          resources:
+            limits:
+              cpu: "2"
+              memory: "8Gi"
+            requests:
+              cpu: "1"
+              memory: "4Gi"
+          ports:
+          - containerPort: 6379
+            name: gcs-server
+          - containerPort: 8265
+            name: dashboard
+          - containerPort: 10001
+            name: client
+
+  workerGroupSpecs:
+  # ---------------------------------------------------------
+  # 1. TRAINER / ACTOR POOL (Targeting trainer-gpu-pool)
+  # ---------------------------------------------------------
+  - groupName: trainer-group
+    replicas: 1
+    rayStartParams:
+      num-gpus: '1'
+    template:
+      metadata:
+        labels:
+          slime-role: trainer
+          timeslice.io/group: "group-slime-trainer"
+      spec:
+        nodeSelector:
+          cloud.google.com/gke-nodepool: trainer-gpu-pool
+        tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Equal"
+          value: "present"
+          effect: "NoSchedule"
+        - key: "timeslice.io/shared"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+        containers:
+        - name: ray-worker-trainer
+          image: slimerl/slime:latest
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+              memory: "32Gi"
+            requests:
+              nvidia.com/gpu: "1"
+              memory: "16Gi"
+
+  # ---------------------------------------------------------
+  # 2. ROLLOUT POOL (Targeting sampler-gpu-pool)
+  # ---------------------------------------------------------
+  - groupName: rollout-group
+    replicas: 1
+    rayStartParams:
+      num-gpus: '1'
+    template:
+      metadata:
+        labels:
+          slime-role: rollout
+          timeslice.io/group: "group-slime-sampler"
+      spec:
+        nodeSelector:
+          cloud.google.com/gke-nodepool: sampler-gpu-pool
+        tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Equal"
+          value: "present"
+          effect: "NoSchedule"
+        - key: "timeslice.io/shared"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+        containers:
+        - name: ray-worker-rollout
+          image: slimerl/slime:latest
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+              memory: "32Gi"
+            requests:
+              nvidia.com/gpu: "1"
+              memory: "16Gi"
