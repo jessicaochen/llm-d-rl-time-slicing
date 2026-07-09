@@ -31,7 +31,7 @@ var (
 			Help:    "Duration of snapshot and restore operations as reported by snapshot agents.",
 			Buckets: prometheus.DefBuckets,
 		},
-		[]string{"group_id", "node", "operation"},
+		[]string{"group_id", "job_id", "node", "operation"},
 	)
 
 	// DeferredSnapshotsTotal tracks the number of times a snapshot was deferred during Yield() due to zero waiters.
