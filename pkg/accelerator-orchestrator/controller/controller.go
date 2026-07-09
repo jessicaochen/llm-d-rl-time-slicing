@@ -285,9 +285,14 @@ func (c *Controller) reconcileNode(ctx context.Context, groupID, nodeName, activ
 		}
 	}
 
-	// 2. Wait out any existing transitions
-	// TODO: crash recovery detect that an agent is still in the middle of transitioning. We will not have the operation
-	// number but we can still wait till it leaves that state.
+	// Wait out any existing transitioning. We lack the operation ID to track so wait via error
+	// to retry later via rate-limited requeue.
+	if activeJobID != "" {
+		if state, ok := agentJobStates[activeJobID]; ok && state == pb.SnapshotAgentJobState_STATE_TRANSITIONING {
+			slog.InfoContext(ctx, "Active job is TRANSITIONING, waiting for it to finish", "activeJobID", activeJobID)
+			return fmt.Errorf("reconciliation pending: active job %s is currently transitioning", activeJobID)
+		}
+	}
 
 	// 3. Ensure no other jobs have their context loaded
 	for jobID, state := range agentJobStates {
