@@ -1882,3 +1882,79 @@ func TestController_Reconcile_DeduceActiveJob_RestartCase(t *testing.T) {
 		})
 	}
 }
+
+func TestController_Reconcile_PreemptionSafetyGates_ActiveJobTransitioning(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	lockStore := store.NewMemLockStore()
+	groupStore := store.NewGroupStore(lockStore)
+	jobStore := store.NewJobStore()
+	testQueue := &trackQueue{
+		TypedRateLimitingInterface: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: "test"},
+		),
+	}
+
+	groupID := "group-1"
+	nodeName := "node-1"
+
+	// 1. Setup group and nodes
+	testGroup, _, err := groupStore.GetOrCreate(ctx, groupID)
+	if err != nil {
+		t.Fatalf("failed to create group: %v", err)
+	}
+	testGroup.Status().SetNodes([]string{nodeName})
+	testGroup.Spec().SetActiveJob("job-1")
+
+	// 2. Setup active job in store with TRANSITIONING state
+	job1 := store.NewJob(groupID, "job-1")
+	job1.UpdateContextState(nodeName, pb.SnapshotAgentJobState_STATE_TRANSITIONING)
+
+	if err := jobStore.Put(ctx, job1); err != nil {
+		t.Fatalf("failed to put job1: %v", err)
+	}
+
+	// 3. Mock SnapshotAgentStore to fail if Snapshot/Restore is called
+	mockAgentStore := &controller.MockSnapshotAgentStore{
+		SnapshotFunc: func(ctx context.Context, node, jobID, gID string) (*agentpb.SnapshotResponse, error) {
+			t.Errorf("Unexpected call to Snapshot")
+			return nil, fmt.Errorf("unexpected call")
+		},
+		RestoreFunc: func(ctx context.Context, node, jobID, gID string) (*agentpb.RestoreResponse, error) {
+			t.Errorf("Unexpected call to Restore")
+			return nil, fmt.Errorf("unexpected call")
+		},
+	}
+
+	mockOrch := &mockInfrastructureOrchestrator{
+		observeFunc: func(ctx context.Context, gID string) error {
+			return nil
+		},
+	}
+
+	c := controller.NewController(groupStore, jobStore, testQueue, mockOrch, mockAgentStore)
+
+	// Start the controller
+	go func() {
+		if err := c.Run(ctx, 1); err != nil {
+			t.Errorf("Controller Run failed: %v", err)
+		}
+	}()
+
+	// Trigger reconcile
+	testQueue.Add(groupID)
+
+	// Verify that it failed and was re-queued (AddRateLimited called)
+	err = waitWithTimeout(func() bool {
+		return testQueue.getAddRateLimitedCount() > 0
+	}, 2*time.Second)
+	if err != nil {
+		t.Fatal("Timed out waiting for item to be re-queued (reconciliation should have failed)")
+	}
+
+	if testQueue.getAddRateLimitedCount() < 1 {
+		t.Errorf("Expected AddRateLimited to be called at least once, got %d", testQueue.getAddRateLimitedCount())
+	}
+}
