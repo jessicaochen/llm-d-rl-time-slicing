@@ -14,7 +14,6 @@ import (
 	"github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/store"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -137,21 +136,6 @@ func (m *MockGroupLockStore) Unlock(ctx context.Context, jobID string) error {
 	return nil
 }
 
-// waitFor polls cond until it returns true or the timeout elapses.
-// Used to observe server-side state that is updated asynchronously
-// after the client sees the RPC complete.
-func waitFor(t *testing.T, cond func() bool, msg string) {
-	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	t.Fatalf("timed out waiting for %s", msg)
-}
-
 func TestServer_Acquire_Whitebox(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -216,9 +200,9 @@ func TestServer_Acquire_Whitebox(t *testing.T) {
 				}
 				// Cancelled acquire must remove job-1 from the waiting queue
 				// without touching job-2's lock.
-				waitFor(t, func() bool {
-					return !g.Spec().GetWaitingJobQueue().Exists("job-1")
-				}, "job-1 to be removed from waiting queue")
+				if g.Spec().GetWaitingJobQueue().Exists("job-1") {
+					t.Errorf("expected job-1 to be removed from waiting queue")
+				}
 				if got := g.Spec().LockingJob(); got != "job-2" {
 					t.Errorf("LockingJob() = %q, want %q", got, "job-2")
 				}
@@ -275,9 +259,9 @@ func TestServer_Acquire_Whitebox(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to get group: %v", err)
 				}
-				waitFor(t, func() bool {
-					return g.Spec().LockingJob() == ""
-				}, "lock to be released after cancelled acquire")
+				if got := g.Spec().LockingJob(); got != "" {
+					t.Errorf("LockingJob() = %q, want empty (lock released)", got)
+				}
 			},
 		},
 		{
@@ -361,25 +345,20 @@ func TestServer_Acquire_Whitebox(t *testing.T) {
 			defer cancel()
 			gs, js := tc.setupStores(t, serverCtx)
 
-			srv, mq, cleanup := InitGRPCServer(gs, js)
-			defer cleanup()
+			mq := &MockWorkQueue{}
+			ctrl := controller.NewController(nil, nil, mq, nil, nil)
+			srv := NewServer(ctrl, gs, js)
+			srv.acquirePollInterval = 1 * time.Millisecond
 
 			if tc.hook != nil {
 				tc.hook(t, srv, gs, js, cancel)
 			}
 
-			conn, err := grpc.NewClient(
-				"passthrough:///bufnet",
-				grpc.WithContextDialer(BufDialer),
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			if err != nil {
-				t.Fatalf("Failed to dial bufnet: %v", err)
-			}
-			defer conn.Close()
-			client := pb.NewAcceleratorOrchestratorServiceClient(conn)
-
-			resp, err := client.Acquire(clientCtx, &pb.AcquireRequest{
+			// Call the handler directly (not through gRPC) so that when it
+			// returns, all of its side effects — including lock-request
+			// cleanup on cancellation — have completed and can be asserted
+			// synchronously.
+			resp, err := srv.Acquire(clientCtx, &pb.AcquireRequest{
 				GroupId: tc.groupID,
 				JobId:   tc.jobID,
 			})
@@ -399,15 +378,10 @@ func TestServer_Acquire_Whitebox(t *testing.T) {
 				tc.verify(t, resp, err)
 			}
 
-			// verifyAfter waits for any asynchronous server-side cleanup to
-			// finish, so the enqueue count below is stable when checked.
 			if tc.verifyAfter != nil {
 				tc.verifyAfter(t, gs)
 			}
 
-			waitFor(t, func() bool {
-				return len(mq.GetAdded()) >= tc.wantEnqueues
-			}, "expected number of enqueues")
 			added := mq.GetAdded()
 			if len(added) != tc.wantEnqueues {
 				t.Errorf("expected %d enqueues, got %v", tc.wantEnqueues, added)
