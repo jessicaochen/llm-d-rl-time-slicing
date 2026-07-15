@@ -54,7 +54,7 @@ ROLLOUT_ARGS=(
     --rollout-shuffle
     --rm-type deepscaler
     --num-rollout 2
-    --rollout-batch-size 288
+    --rollout-batch-size 36
     --n-samples-per-prompt 8
     --max-training-samples 288
     --num-steps-per-rollout 1
@@ -85,7 +85,6 @@ OPTIMIZER_ARGS=(
 )
 SGLANG_ARGS=(
     --sglang-mem-fraction-static 0.4
-    --disable-cuda-graph
 )
 TIMESLICE_ARGS=(
     --enable-timeslice
@@ -104,6 +103,7 @@ if [ -f /opt/scripts/train.py ]; then
 fi
 if [ -f /opt/scripts/arguments.py ]; then cp -f /opt/scripts/arguments.py /root/slime/slime/utils/arguments.py; fi
 if [ -f /opt/scripts/rollout.py ]; then cp -f /opt/scripts/rollout.py /root/slime/slime/ray/rollout.py; fi
+if [ -f /opt/scripts/sglang_engine.py ]; then cp -f /opt/scripts/sglang_engine.py /root/slime/slime/backends/sglang_utils/sglang_engine.py; fi
 
 # Launch Slime training via Ray
 python3 /root/slime/train.py \
