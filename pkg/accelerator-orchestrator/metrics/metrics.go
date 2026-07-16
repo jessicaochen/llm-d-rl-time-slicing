@@ -48,6 +48,14 @@ var (
 	)
 )
 
+// CleanupGroup removes gauge series labeled with the given group so stale
+// values don't persist in /metrics after the group is deleted. Cumulative
+// metrics (histograms, counters) are left intact so group ID reuse doesn't
+// appear as a counter reset.
+func CleanupGroup(groupID string) {
+	QueueDepth.DeletePartialMatch(prometheus.Labels{"group_id": groupID})
+}
+
 // Register registers all accelerator orchestrator Prometheus metrics with the default registry.
 func Register() {
 	prometheus.MustRegister(
