@@ -27,6 +27,9 @@ Before deploying cooperative time-slicing for Slime, ensure your Kubernetes clus
 ### Kubernetes Version
 * Kubernetes **v1.34** or later.
 
+### KubeRay Version
+* **KubeRay Operator v1.6.0 or later** (required for modern Dynamic Resource Allocation pod syntax).
+
 ### GPU Node Configuration
 * GPU nodes must run **NVIDIA GPU Driver 565 or later**. This is a strict requirement to support **NVIDIA Dynamic Resource Allocation (DRA)**.
 * GPU memory capacity must be sufficient to hold the active working set of a single Slime job's trainer or sampler at any one time (since inactive jobs will have their GPU memory checkpointed and evicted).

@@ -10,6 +10,7 @@ spec:
     env_vars:
       PYTHONPATH: "/root/Megatron-LM"
       CUDA_DEVICE_MAX_CONNECTIONS: "1"
+      JOB_NAME: "${JOB_NAME}"
 
   submitterPodTemplate:
     spec:
@@ -43,10 +44,10 @@ spec:
             resources:
               limits:
                 cpu: "2"
-                memory: "4Gi"
+                memory: "16Gi"
               requests:
                 cpu: "300m"
-                memory: "1Gi"
+                memory: "4Gi"
             volumeMounts:
             - name: script-vol
               mountPath: /opt/scripts
