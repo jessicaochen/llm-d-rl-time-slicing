@@ -7,7 +7,7 @@ WORKDIR /workspace
 COPY . .
 
 # Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /workspace/acceleratororchestrator ./cmd/acceleratororchestrator
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /workspace/acceleratororchestrator ./cmd/timesliceorchestrator
 
 # --- Runtime stage ---
 FROM gcr.io/distroless/static:nonroot

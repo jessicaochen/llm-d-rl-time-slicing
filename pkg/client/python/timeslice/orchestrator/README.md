@@ -187,7 +187,7 @@ To regenerate gRPC stubs for the Accelerator Orchestrator:
 ```bash
 # Run from pkg/client/python directory
 python3 -m grpc_tools.protoc \
-    -Itimeslice/orchestrator/_generated=../../accelerator-orchestrator/api/v1alpha1 \
+    -Itimeslice/orchestrator/_generated=../../timeslice-orchestrator/api/v1alpha1 \
     --python_out=. \
     --grpc_python_out=. \
     timeslice/orchestrator/_generated/accelerator_orchestrator.proto

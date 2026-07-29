@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
-	pb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/api/v1alpha1"
+	pb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/timeslice-orchestrator/api/v1alpha1"
 	"github.com/llm-d-incubation/llm-d-rl-time-slicing/tests/integration/orchestrator/scenarios"
 )
 
@@ -39,7 +39,7 @@ var orchestratorTestCmd = &cobra.Command{
 	Use:   "orchestrator",
 	Short: "Run E2E scenario tests against the cluster",
 	Long: `Runs the E2E scenario tests (Single RL Job and Queued RL Jobs) ` +
-		`against the active Kubernetes cluster and the deployed Accelerator Orchestrator.`,
+		`against the active Kubernetes cluster and the deployed TimeSlice Orchestrator.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
