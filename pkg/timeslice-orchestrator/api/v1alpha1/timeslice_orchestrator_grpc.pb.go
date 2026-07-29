@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v3.21.12
-// source: accelerator_orchestrator.proto
+// source: timeslice_orchestrator.proto
 
 package v1alpha1
 
@@ -19,19 +19,19 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AcceleratorOrchestratorService_Acquire_FullMethodName        = "/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/Acquire"
-	AcceleratorOrchestratorService_Yield_FullMethodName          = "/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/Yield"
-	AcceleratorOrchestratorService_ListGroups_FullMethodName     = "/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/ListGroups"
-	AcceleratorOrchestratorService_GetGroupStatus_FullMethodName = "/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/GetGroupStatus"
+	TimeSliceOrchestratorService_Acquire_FullMethodName        = "/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/Acquire"
+	TimeSliceOrchestratorService_Yield_FullMethodName          = "/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/Yield"
+	TimeSliceOrchestratorService_ListGroups_FullMethodName     = "/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/ListGroups"
+	TimeSliceOrchestratorService_GetGroupStatus_FullMethodName = "/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/GetGroupStatus"
 )
 
-// AcceleratorOrchestratorServiceClient is the client API for AcceleratorOrchestratorService service.
+// TimeSliceOrchestratorServiceClient is the client API for TimeSliceOrchestratorService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// AcceleratorOrchestratorService provides APIs for managing accelerator orchestration.
+// TimeSliceOrchestratorService provides APIs for managing accelerator orchestration.
 // It coordinates access to shared accelerators among multiple jobs in a time-slice group.
-type AcceleratorOrchestratorServiceClient interface {
+type TimeSliceOrchestratorServiceClient interface {
 	// Acquire requests exclusive access to a time-slice group.
 	// This call blocks until access is granted.
 	// If the group is idle and the job's context is already RUNNING on the accelerator,
@@ -51,61 +51,61 @@ type AcceleratorOrchestratorServiceClient interface {
 	GetGroupStatus(ctx context.Context, in *GetGroupStatusRequest, opts ...grpc.CallOption) (*GetGroupStatusResponse, error)
 }
 
-type acceleratorOrchestratorServiceClient struct {
+type timeSliceOrchestratorServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewAcceleratorOrchestratorServiceClient(cc grpc.ClientConnInterface) AcceleratorOrchestratorServiceClient {
-	return &acceleratorOrchestratorServiceClient{cc}
+func NewTimeSliceOrchestratorServiceClient(cc grpc.ClientConnInterface) TimeSliceOrchestratorServiceClient {
+	return &timeSliceOrchestratorServiceClient{cc}
 }
 
-func (c *acceleratorOrchestratorServiceClient) Acquire(ctx context.Context, in *AcquireRequest, opts ...grpc.CallOption) (*AcquireResponse, error) {
+func (c *timeSliceOrchestratorServiceClient) Acquire(ctx context.Context, in *AcquireRequest, opts ...grpc.CallOption) (*AcquireResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AcquireResponse)
-	err := c.cc.Invoke(ctx, AcceleratorOrchestratorService_Acquire_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, TimeSliceOrchestratorService_Acquire_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *acceleratorOrchestratorServiceClient) Yield(ctx context.Context, in *YieldRequest, opts ...grpc.CallOption) (*YieldResponse, error) {
+func (c *timeSliceOrchestratorServiceClient) Yield(ctx context.Context, in *YieldRequest, opts ...grpc.CallOption) (*YieldResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(YieldResponse)
-	err := c.cc.Invoke(ctx, AcceleratorOrchestratorService_Yield_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, TimeSliceOrchestratorService_Yield_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *acceleratorOrchestratorServiceClient) ListGroups(ctx context.Context, in *ListGroupsRequest, opts ...grpc.CallOption) (*ListGroupsResponse, error) {
+func (c *timeSliceOrchestratorServiceClient) ListGroups(ctx context.Context, in *ListGroupsRequest, opts ...grpc.CallOption) (*ListGroupsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListGroupsResponse)
-	err := c.cc.Invoke(ctx, AcceleratorOrchestratorService_ListGroups_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, TimeSliceOrchestratorService_ListGroups_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *acceleratorOrchestratorServiceClient) GetGroupStatus(ctx context.Context, in *GetGroupStatusRequest, opts ...grpc.CallOption) (*GetGroupStatusResponse, error) {
+func (c *timeSliceOrchestratorServiceClient) GetGroupStatus(ctx context.Context, in *GetGroupStatusRequest, opts ...grpc.CallOption) (*GetGroupStatusResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetGroupStatusResponse)
-	err := c.cc.Invoke(ctx, AcceleratorOrchestratorService_GetGroupStatus_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, TimeSliceOrchestratorService_GetGroupStatus_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// AcceleratorOrchestratorServiceServer is the server API for AcceleratorOrchestratorService service.
-// All implementations must embed UnimplementedAcceleratorOrchestratorServiceServer
+// TimeSliceOrchestratorServiceServer is the server API for TimeSliceOrchestratorService service.
+// All implementations must embed UnimplementedTimeSliceOrchestratorServiceServer
 // for forward compatibility.
 //
-// AcceleratorOrchestratorService provides APIs for managing accelerator orchestration.
+// TimeSliceOrchestratorService provides APIs for managing accelerator orchestration.
 // It coordinates access to shared accelerators among multiple jobs in a time-slice group.
-type AcceleratorOrchestratorServiceServer interface {
+type TimeSliceOrchestratorServiceServer interface {
 	// Acquire requests exclusive access to a time-slice group.
 	// This call blocks until access is granted.
 	// If the group is idle and the job's context is already RUNNING on the accelerator,
@@ -123,146 +123,146 @@ type AcceleratorOrchestratorServiceServer interface {
 	// GetGroupStatus returns the detailed status of a specific time-slice group,
 	// including the current locking job, waiter queue depth, and individual job context states.
 	GetGroupStatus(context.Context, *GetGroupStatusRequest) (*GetGroupStatusResponse, error)
-	mustEmbedUnimplementedAcceleratorOrchestratorServiceServer()
+	mustEmbedUnimplementedTimeSliceOrchestratorServiceServer()
 }
 
-// UnimplementedAcceleratorOrchestratorServiceServer must be embedded to have
+// UnimplementedTimeSliceOrchestratorServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedAcceleratorOrchestratorServiceServer struct{}
+type UnimplementedTimeSliceOrchestratorServiceServer struct{}
 
-func (UnimplementedAcceleratorOrchestratorServiceServer) Acquire(context.Context, *AcquireRequest) (*AcquireResponse, error) {
+func (UnimplementedTimeSliceOrchestratorServiceServer) Acquire(context.Context, *AcquireRequest) (*AcquireResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Acquire not implemented")
 }
-func (UnimplementedAcceleratorOrchestratorServiceServer) Yield(context.Context, *YieldRequest) (*YieldResponse, error) {
+func (UnimplementedTimeSliceOrchestratorServiceServer) Yield(context.Context, *YieldRequest) (*YieldResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Yield not implemented")
 }
-func (UnimplementedAcceleratorOrchestratorServiceServer) ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error) {
+func (UnimplementedTimeSliceOrchestratorServiceServer) ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListGroups not implemented")
 }
-func (UnimplementedAcceleratorOrchestratorServiceServer) GetGroupStatus(context.Context, *GetGroupStatusRequest) (*GetGroupStatusResponse, error) {
+func (UnimplementedTimeSliceOrchestratorServiceServer) GetGroupStatus(context.Context, *GetGroupStatusRequest) (*GetGroupStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetGroupStatus not implemented")
 }
-func (UnimplementedAcceleratorOrchestratorServiceServer) mustEmbedUnimplementedAcceleratorOrchestratorServiceServer() {
+func (UnimplementedTimeSliceOrchestratorServiceServer) mustEmbedUnimplementedTimeSliceOrchestratorServiceServer() {
 }
-func (UnimplementedAcceleratorOrchestratorServiceServer) testEmbeddedByValue() {}
+func (UnimplementedTimeSliceOrchestratorServiceServer) testEmbeddedByValue() {}
 
-// UnsafeAcceleratorOrchestratorServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to AcceleratorOrchestratorServiceServer will
+// UnsafeTimeSliceOrchestratorServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to TimeSliceOrchestratorServiceServer will
 // result in compilation errors.
-type UnsafeAcceleratorOrchestratorServiceServer interface {
-	mustEmbedUnimplementedAcceleratorOrchestratorServiceServer()
+type UnsafeTimeSliceOrchestratorServiceServer interface {
+	mustEmbedUnimplementedTimeSliceOrchestratorServiceServer()
 }
 
-func RegisterAcceleratorOrchestratorServiceServer(s grpc.ServiceRegistrar, srv AcceleratorOrchestratorServiceServer) {
-	// If the following call panics, it indicates UnimplementedAcceleratorOrchestratorServiceServer was
+func RegisterTimeSliceOrchestratorServiceServer(s grpc.ServiceRegistrar, srv TimeSliceOrchestratorServiceServer) {
+	// If the following call panics, it indicates UnimplementedTimeSliceOrchestratorServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&AcceleratorOrchestratorService_ServiceDesc, srv)
+	s.RegisterService(&TimeSliceOrchestratorService_ServiceDesc, srv)
 }
 
-func _AcceleratorOrchestratorService_Acquire_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _TimeSliceOrchestratorService_Acquire_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AcquireRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AcceleratorOrchestratorServiceServer).Acquire(ctx, in)
+		return srv.(TimeSliceOrchestratorServiceServer).Acquire(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AcceleratorOrchestratorService_Acquire_FullMethodName,
+		FullMethod: TimeSliceOrchestratorService_Acquire_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AcceleratorOrchestratorServiceServer).Acquire(ctx, req.(*AcquireRequest))
+		return srv.(TimeSliceOrchestratorServiceServer).Acquire(ctx, req.(*AcquireRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AcceleratorOrchestratorService_Yield_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _TimeSliceOrchestratorService_Yield_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(YieldRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AcceleratorOrchestratorServiceServer).Yield(ctx, in)
+		return srv.(TimeSliceOrchestratorServiceServer).Yield(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AcceleratorOrchestratorService_Yield_FullMethodName,
+		FullMethod: TimeSliceOrchestratorService_Yield_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AcceleratorOrchestratorServiceServer).Yield(ctx, req.(*YieldRequest))
+		return srv.(TimeSliceOrchestratorServiceServer).Yield(ctx, req.(*YieldRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AcceleratorOrchestratorService_ListGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _TimeSliceOrchestratorService_ListGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListGroupsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AcceleratorOrchestratorServiceServer).ListGroups(ctx, in)
+		return srv.(TimeSliceOrchestratorServiceServer).ListGroups(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AcceleratorOrchestratorService_ListGroups_FullMethodName,
+		FullMethod: TimeSliceOrchestratorService_ListGroups_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AcceleratorOrchestratorServiceServer).ListGroups(ctx, req.(*ListGroupsRequest))
+		return srv.(TimeSliceOrchestratorServiceServer).ListGroups(ctx, req.(*ListGroupsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AcceleratorOrchestratorService_GetGroupStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _TimeSliceOrchestratorService_GetGroupStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetGroupStatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AcceleratorOrchestratorServiceServer).GetGroupStatus(ctx, in)
+		return srv.(TimeSliceOrchestratorServiceServer).GetGroupStatus(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AcceleratorOrchestratorService_GetGroupStatus_FullMethodName,
+		FullMethod: TimeSliceOrchestratorService_GetGroupStatus_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AcceleratorOrchestratorServiceServer).GetGroupStatus(ctx, req.(*GetGroupStatusRequest))
+		return srv.(TimeSliceOrchestratorServiceServer).GetGroupStatus(ctx, req.(*GetGroupStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// AcceleratorOrchestratorService_ServiceDesc is the grpc.ServiceDesc for AcceleratorOrchestratorService service.
+// TimeSliceOrchestratorService_ServiceDesc is the grpc.ServiceDesc for TimeSliceOrchestratorService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var AcceleratorOrchestratorService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService",
-	HandlerType: (*AcceleratorOrchestratorServiceServer)(nil),
+var TimeSliceOrchestratorService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService",
+	HandlerType: (*TimeSliceOrchestratorServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Acquire",
-			Handler:    _AcceleratorOrchestratorService_Acquire_Handler,
+			Handler:    _TimeSliceOrchestratorService_Acquire_Handler,
 		},
 		{
 			MethodName: "Yield",
-			Handler:    _AcceleratorOrchestratorService_Yield_Handler,
+			Handler:    _TimeSliceOrchestratorService_Yield_Handler,
 		},
 		{
 			MethodName: "ListGroups",
-			Handler:    _AcceleratorOrchestratorService_ListGroups_Handler,
+			Handler:    _TimeSliceOrchestratorService_ListGroups_Handler,
 		},
 		{
 			MethodName: "GetGroupStatus",
-			Handler:    _AcceleratorOrchestratorService_GetGroupStatus_Handler,
+			Handler:    _TimeSliceOrchestratorService_GetGroupStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "accelerator_orchestrator.proto",
+	Metadata: "timeslice_orchestrator.proto",
 }

@@ -126,7 +126,7 @@ var orchestratorTestCmd = &cobra.Command{
 			return fmt.Errorf("failed to create orchestrator client: %w", err)
 		}
 		defer conn.Close()
-		client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+		client := pb.NewTimeSliceOrchestratorServiceClient(conn)
 
 		// Ping the orchestrator with a quick call to ensure it's reachable
 		pingCtx, pingCancel := context.WithTimeout(ctx, 5*time.Second)

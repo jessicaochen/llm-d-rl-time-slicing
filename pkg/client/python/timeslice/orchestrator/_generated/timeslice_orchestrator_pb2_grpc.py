@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from timeslice.orchestrator._generated import accelerator_orchestrator_pb2 as timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2
+from timeslice.orchestrator._generated import timeslice_orchestrator_pb2 as timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2
 
 GRPC_GENERATED_VERSION = '1.81.1'
 GRPC_VERSION = grpc.__version__
@@ -18,15 +18,15 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in timeslice/orchestrator/_generated/accelerator_orchestrator_pb2_grpc.py depends on'
+        + ' but the generated code in timeslice/orchestrator/_generated/timeslice_orchestrator_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class AcceleratorOrchestratorServiceStub:
-    """AcceleratorOrchestratorService provides APIs for managing accelerator orchestration.
+class TimeSliceOrchestratorServiceStub:
+    """TimeSliceOrchestratorService provides APIs for managing accelerator orchestration.
     It coordinates access to shared accelerators among multiple jobs in a time-slice group.
     """
 
@@ -37,29 +37,29 @@ class AcceleratorOrchestratorServiceStub:
             channel: A grpc.Channel.
         """
         self.Acquire = channel.unary_unary(
-                '/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/Acquire',
-                request_serializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.AcquireRequest.SerializeToString,
-                response_deserializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.AcquireResponse.FromString,
+                '/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/Acquire',
+                request_serializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.AcquireRequest.SerializeToString,
+                response_deserializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.AcquireResponse.FromString,
                 _registered_method=True)
         self.Yield = channel.unary_unary(
-                '/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/Yield',
-                request_serializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.YieldRequest.SerializeToString,
-                response_deserializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.YieldResponse.FromString,
+                '/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/Yield',
+                request_serializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.YieldRequest.SerializeToString,
+                response_deserializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.YieldResponse.FromString,
                 _registered_method=True)
         self.ListGroups = channel.unary_unary(
-                '/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/ListGroups',
-                request_serializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.ListGroupsRequest.SerializeToString,
-                response_deserializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.ListGroupsResponse.FromString,
+                '/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/ListGroups',
+                request_serializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.ListGroupsRequest.SerializeToString,
+                response_deserializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.ListGroupsResponse.FromString,
                 _registered_method=True)
         self.GetGroupStatus = channel.unary_unary(
-                '/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/GetGroupStatus',
-                request_serializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.GetGroupStatusRequest.SerializeToString,
-                response_deserializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.GetGroupStatusResponse.FromString,
+                '/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/GetGroupStatus',
+                request_serializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.GetGroupStatusRequest.SerializeToString,
+                response_deserializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.GetGroupStatusResponse.FromString,
                 _registered_method=True)
 
 
-class AcceleratorOrchestratorServiceServicer:
-    """AcceleratorOrchestratorService provides APIs for managing accelerator orchestration.
+class TimeSliceOrchestratorServiceServicer:
+    """TimeSliceOrchestratorService provides APIs for managing accelerator orchestration.
     It coordinates access to shared accelerators among multiple jobs in a time-slice group.
     """
 
@@ -101,38 +101,38 @@ class AcceleratorOrchestratorServiceServicer:
         raise NotImplementedError('Method not implemented!')
 
 
-def add_AcceleratorOrchestratorServiceServicer_to_server(servicer, server):
+def add_TimeSliceOrchestratorServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Acquire': grpc.unary_unary_rpc_method_handler(
                     servicer.Acquire,
-                    request_deserializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.AcquireRequest.FromString,
-                    response_serializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.AcquireResponse.SerializeToString,
+                    request_deserializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.AcquireRequest.FromString,
+                    response_serializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.AcquireResponse.SerializeToString,
             ),
             'Yield': grpc.unary_unary_rpc_method_handler(
                     servicer.Yield,
-                    request_deserializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.YieldRequest.FromString,
-                    response_serializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.YieldResponse.SerializeToString,
+                    request_deserializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.YieldRequest.FromString,
+                    response_serializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.YieldResponse.SerializeToString,
             ),
             'ListGroups': grpc.unary_unary_rpc_method_handler(
                     servicer.ListGroups,
-                    request_deserializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.ListGroupsRequest.FromString,
-                    response_serializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.ListGroupsResponse.SerializeToString,
+                    request_deserializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.ListGroupsRequest.FromString,
+                    response_serializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.ListGroupsResponse.SerializeToString,
             ),
             'GetGroupStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.GetGroupStatus,
-                    request_deserializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.GetGroupStatusRequest.FromString,
-                    response_serializer=timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.GetGroupStatusResponse.SerializeToString,
+                    request_deserializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.GetGroupStatusRequest.FromString,
+                    response_serializer=timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.GetGroupStatusResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService', rpc_method_handlers)
+            'timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService', rpc_method_handlers)
+    server.add_registered_method_handlers('timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class AcceleratorOrchestratorService:
-    """AcceleratorOrchestratorService provides APIs for managing accelerator orchestration.
+class TimeSliceOrchestratorService:
+    """TimeSliceOrchestratorService provides APIs for managing accelerator orchestration.
     It coordinates access to shared accelerators among multiple jobs in a time-slice group.
     """
 
@@ -150,9 +150,9 @@ class AcceleratorOrchestratorService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/Acquire',
-            timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.AcquireRequest.SerializeToString,
-            timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.AcquireResponse.FromString,
+            '/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/Acquire',
+            timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.AcquireRequest.SerializeToString,
+            timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.AcquireResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -177,9 +177,9 @@ class AcceleratorOrchestratorService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/Yield',
-            timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.YieldRequest.SerializeToString,
-            timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.YieldResponse.FromString,
+            '/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/Yield',
+            timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.YieldRequest.SerializeToString,
+            timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.YieldResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -204,9 +204,9 @@ class AcceleratorOrchestratorService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/ListGroups',
-            timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.ListGroupsRequest.SerializeToString,
-            timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.ListGroupsResponse.FromString,
+            '/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/ListGroups',
+            timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.ListGroupsRequest.SerializeToString,
+            timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.ListGroupsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -231,9 +231,9 @@ class AcceleratorOrchestratorService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService/GetGroupStatus',
-            timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.GetGroupStatusRequest.SerializeToString,
-            timeslice_dot_orchestrator_dot___generated_dot_accelerator__orchestrator__pb2.GetGroupStatusResponse.FromString,
+            '/timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService/GetGroupStatus',
+            timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.GetGroupStatusRequest.SerializeToString,
+            timeslice_dot_orchestrator_dot___generated_dot_timeslice__orchestrator__pb2.GetGroupStatusResponse.FromString,
             options,
             channel_credentials,
             insecure,

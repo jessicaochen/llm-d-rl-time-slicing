@@ -40,12 +40,12 @@ func init() {
 	orchestratorCmd.AddCommand(yieldCmd)
 }
 
-func getClient() (pb.AcceleratorOrchestratorServiceClient, *grpc.ClientConn, error) {
+func getClient() (pb.TimeSliceOrchestratorServiceClient, *grpc.ClientConn, error) {
 	conn, err := grpc.NewClient(orchestratorAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("did not connect: %w", err)
 	}
-	return pb.NewAcceleratorOrchestratorServiceClient(conn), conn, nil
+	return pb.NewTimeSliceOrchestratorServiceClient(conn), conn, nil
 }
 
 var listGroupsCmd = &cobra.Command{

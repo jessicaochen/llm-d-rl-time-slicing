@@ -116,7 +116,7 @@ func TestE2E_SingleRLJob(t *testing.T) {
 	}
 	grpcServer := google_grpc.NewServer()
 	srv := server.NewServer(ctrl, groupStore, jobStore)
-	pb.RegisterAcceleratorOrchestratorServiceServer(grpcServer, srv)
+	pb.RegisterTimeSliceOrchestratorServiceServer(grpcServer, srv)
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
 			t.Errorf("gRPC server failed: %v", err)
@@ -130,7 +130,7 @@ func TestE2E_SingleRLJob(t *testing.T) {
 		t.Fatalf("Failed to create gRPC client: %v", err)
 	}
 	defer conn.Close()
-	client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+	client := pb.NewTimeSliceOrchestratorServiceClient(conn)
 
 	// Nodes already populated at startup
 
@@ -247,7 +247,7 @@ func TestE2E_QueuedRLJobs(t *testing.T) {
 	}
 	grpcServer := google_grpc.NewServer()
 	srv := server.NewServer(ctrl, groupStore, jobStore)
-	pb.RegisterAcceleratorOrchestratorServiceServer(grpcServer, srv)
+	pb.RegisterTimeSliceOrchestratorServiceServer(grpcServer, srv)
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
 			t.Errorf("gRPC server failed: %v", err)
@@ -261,7 +261,7 @@ func TestE2E_QueuedRLJobs(t *testing.T) {
 		t.Fatalf("Failed to create gRPC client: %v", err)
 	}
 	defer conn.Close()
-	client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+	client := pb.NewTimeSliceOrchestratorServiceClient(conn)
 
 	// Nodes already populated at startup
 

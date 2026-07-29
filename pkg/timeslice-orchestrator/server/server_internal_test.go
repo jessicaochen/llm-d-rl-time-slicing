@@ -37,7 +37,7 @@ func InitGRPCServer(groupStore GroupStore, jobStore JobStore) (*Server, *MockWor
 	ctrl := controller.NewController(nil, nil, mq, nil, nil)
 	srv := NewServer(ctrl, groupStore, jobStore)
 	srv.acquirePollInterval = 1 * time.Millisecond // Set to 1ms for testing
-	pb.RegisterAcceleratorOrchestratorServiceServer(s, srv)
+	pb.RegisterTimeSliceOrchestratorServiceServer(s, srv)
 	go func() {
 		if err := s.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			slog.Error("Server exited with error", "error", err)
@@ -290,7 +290,7 @@ func TestServer_Acquire_Whitebox(t *testing.T) {
 				t.Fatalf("Failed to dial bufnet: %v", err)
 			}
 			defer conn.Close()
-			client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+			client := pb.NewTimeSliceOrchestratorServiceClient(conn)
 
 			resp, err := client.Acquire(clientCtx, &pb.AcquireRequest{
 				GroupId: tc.groupID,

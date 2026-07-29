@@ -1,15 +1,15 @@
 syntax = "proto3";
 
-package accelerator_orchestrator.v1alpha1;
+package timeslice_orchestrator.v1alpha1;
 
 option go_package = "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/timeslice-orchestrator/api/v1alpha1;v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 
 
-// AcceleratorOrchestratorService provides APIs for managing accelerator orchestration.
+// TimeSliceOrchestratorService provides APIs for managing accelerator orchestration.
 // It coordinates access to shared accelerators among multiple jobs in a time-slice group.
-service AcceleratorOrchestratorService {
+service TimeSliceOrchestratorService {
   // Acquire requests exclusive access to a time-slice group.
   // This call blocks until access is granted.
   // If the group is idle and the job's context is already RUNNING on the accelerator,

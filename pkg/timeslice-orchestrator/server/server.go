@@ -36,9 +36,9 @@ type JobStore interface {
 // checkAcquireFunc defines the signature for the Acquire check hook.
 type checkAcquireFunc func(ctx context.Context, groupID, jobID string, startTime time.Time) (*pb.AcquireResponse, error, bool)
 
-// Server implements the AcceleratorOrchestratorService gRPC server.
+// Server implements the TimeSliceOrchestratorService gRPC server.
 type Server struct {
-	pb.UnimplementedAcceleratorOrchestratorServiceServer
+	pb.UnimplementedTimeSliceOrchestratorServiceServer
 	ctrl                *controller.Controller
 	groupStore          GroupStore
 	jobStore            JobStore
@@ -58,7 +58,7 @@ func NewServer(ctrl *controller.Controller, groupStore GroupStore, jobStore JobS
 	return s
 }
 
-// Acquire implements AcceleratorOrchestratorService.Acquire.
+// Acquire implements TimeSliceOrchestratorService.Acquire.
 func (s *Server) Acquire(ctx context.Context, req *pb.AcquireRequest) (*pb.AcquireResponse, error) {
 	ctx = logging.WithServerMethod(ctx, "Acquire")
 	ctx = logging.WithJobID(ctx, req.GetJobId())
@@ -152,7 +152,7 @@ func (s *Server) isGroupFaulted(ctx context.Context, groupID string) (bool, erro
 	return false, nil
 }
 
-// Yield implements AcceleratorOrchestratorService.Yield.
+// Yield implements TimeSliceOrchestratorService.Yield.
 func (s *Server) Yield(ctx context.Context, req *pb.YieldRequest) (*pb.YieldResponse, error) {
 	ctx = logging.WithServerMethod(ctx, "Yield")
 	ctx = logging.WithJobID(ctx, req.GetJobId())
@@ -199,7 +199,7 @@ func (s *Server) Yield(ctx context.Context, req *pb.YieldRequest) (*pb.YieldResp
 	}, nil
 }
 
-// ListGroups implements AcceleratorOrchestratorService.ListGroups.
+// ListGroups implements TimeSliceOrchestratorService.ListGroups.
 func (s *Server) ListGroups(ctx context.Context, req *pb.ListGroupsRequest) (*pb.ListGroupsResponse, error) {
 	ctx = logging.WithServerMethod(ctx, "ListGroups")
 	slog.InfoContext(ctx, "ListGroups called")
@@ -214,7 +214,7 @@ func (s *Server) ListGroups(ctx context.Context, req *pb.ListGroupsRequest) (*pb
 	return &pb.ListGroupsResponse{GroupIds: ids}, nil
 }
 
-// GetGroupStatus implements AcceleratorOrchestratorService.GetGroupStatus.
+// GetGroupStatus implements TimeSliceOrchestratorService.GetGroupStatus.
 func (s *Server) GetGroupStatus(ctx context.Context, req *pb.GetGroupStatusRequest) (*pb.GetGroupStatusResponse, error) {
 	ctx = logging.WithServerMethod(ctx, "GetGroupStatus")
 	ctx = logging.WithGroupID(ctx, req.GetGroupId())
@@ -309,7 +309,7 @@ func StartServer(
 	}()
 
 	s := grpc.NewServer()
-	pb.RegisterAcceleratorOrchestratorServiceServer(s, NewServer(ctrl, groupStore, jobStore))
+	pb.RegisterTimeSliceOrchestratorServiceServer(s, NewServer(ctrl, groupStore, jobStore))
 
 	errChan := make(chan error, 1)
 	go func() {

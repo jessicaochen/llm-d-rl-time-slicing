@@ -134,7 +134,7 @@ func TestServer_Acquire(t *testing.T) {
 				t.Fatalf("Failed to dial bufnet: %v", err)
 			}
 			defer conn.Close()
-			client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+			client := pb.NewTimeSliceOrchestratorServiceClient(conn)
 
 			resp, err := client.Acquire(clientCtx, &pb.AcquireRequest{
 				GroupId: tc.groupID,
@@ -306,7 +306,7 @@ func TestServer_Yield(t *testing.T) {
 				t.Fatalf("Failed to dial bufnet: %v", err)
 			}
 			defer conn.Close()
-			client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+			client := pb.NewTimeSliceOrchestratorServiceClient(conn)
 
 			resp, err := client.Yield(ctx, &pb.YieldRequest{
 				GroupId: tc.groupID,
@@ -410,7 +410,7 @@ func TestServer_ListGroups(t *testing.T) {
 				t.Fatalf("Failed to dial bufnet: %v", err)
 			}
 			defer conn.Close()
-			client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+			client := pb.NewTimeSliceOrchestratorServiceClient(conn)
 
 			resp, err := client.ListGroups(ctx, &pb.ListGroupsRequest{})
 
@@ -646,7 +646,7 @@ func TestServer_GetGroupStatus(t *testing.T) {
 				t.Fatalf("Failed to dial bufnet: %v", err)
 			}
 			defer conn.Close()
-			client := pb.NewAcceleratorOrchestratorServiceClient(conn)
+			client := pb.NewTimeSliceOrchestratorServiceClient(conn)
 
 			resp, err := client.GetGroupStatus(ctx, &pb.GetGroupStatusRequest{GroupId: tc.groupID})
 

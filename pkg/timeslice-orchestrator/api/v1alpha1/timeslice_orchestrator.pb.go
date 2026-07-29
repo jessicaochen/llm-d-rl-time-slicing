@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.21.12
-// source: accelerator_orchestrator.proto
+// source: timeslice_orchestrator.proto
 
 package v1alpha1
 
@@ -71,11 +71,11 @@ func (x GroupStatus_State) String() string {
 }
 
 func (GroupStatus_State) Descriptor() protoreflect.EnumDescriptor {
-	return file_accelerator_orchestrator_proto_enumTypes[0].Descriptor()
+	return file_timeslice_orchestrator_proto_enumTypes[0].Descriptor()
 }
 
 func (GroupStatus_State) Type() protoreflect.EnumType {
-	return &file_accelerator_orchestrator_proto_enumTypes[0]
+	return &file_timeslice_orchestrator_proto_enumTypes[0]
 }
 
 func (x GroupStatus_State) Number() protoreflect.EnumNumber {
@@ -84,7 +84,7 @@ func (x GroupStatus_State) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GroupStatus_State.Descriptor instead.
 func (GroupStatus_State) EnumDescriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{8, 0}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{8, 0}
 }
 
 // State defines the possible states of a job's accelerator context.
@@ -136,11 +136,11 @@ func (x SnapshotAgentJobState_State) String() string {
 }
 
 func (SnapshotAgentJobState_State) Descriptor() protoreflect.EnumDescriptor {
-	return file_accelerator_orchestrator_proto_enumTypes[1].Descriptor()
+	return file_timeslice_orchestrator_proto_enumTypes[1].Descriptor()
 }
 
 func (SnapshotAgentJobState_State) Type() protoreflect.EnumType {
-	return &file_accelerator_orchestrator_proto_enumTypes[1]
+	return &file_timeslice_orchestrator_proto_enumTypes[1]
 }
 
 func (x SnapshotAgentJobState_State) Number() protoreflect.EnumNumber {
@@ -149,7 +149,7 @@ func (x SnapshotAgentJobState_State) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SnapshotAgentJobState_State.Descriptor instead.
 func (SnapshotAgentJobState_State) EnumDescriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{9, 0}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{9, 0}
 }
 
 // AcquireRequest is the request to acquire exclusive access to a group.
@@ -167,7 +167,7 @@ type AcquireRequest struct {
 
 func (x *AcquireRequest) Reset() {
 	*x = AcquireRequest{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[0]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -179,7 +179,7 @@ func (x *AcquireRequest) String() string {
 func (*AcquireRequest) ProtoMessage() {}
 
 func (x *AcquireRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[0]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -192,7 +192,7 @@ func (x *AcquireRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcquireRequest.ProtoReflect.Descriptor instead.
 func (*AcquireRequest) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{0}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *AcquireRequest) GetJobId() string {
@@ -225,7 +225,7 @@ type AcquireResponse struct {
 
 func (x *AcquireResponse) Reset() {
 	*x = AcquireResponse{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[1]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -237,7 +237,7 @@ func (x *AcquireResponse) String() string {
 func (*AcquireResponse) ProtoMessage() {}
 
 func (x *AcquireResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[1]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -250,7 +250,7 @@ func (x *AcquireResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcquireResponse.ProtoReflect.Descriptor instead.
 func (*AcquireResponse) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{1}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *AcquireResponse) GetSuccess() bool {
@@ -287,7 +287,7 @@ type YieldRequest struct {
 
 func (x *YieldRequest) Reset() {
 	*x = YieldRequest{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[2]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -299,7 +299,7 @@ func (x *YieldRequest) String() string {
 func (*YieldRequest) ProtoMessage() {}
 
 func (x *YieldRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[2]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -312,7 +312,7 @@ func (x *YieldRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use YieldRequest.ProtoReflect.Descriptor instead.
 func (*YieldRequest) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{2}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *YieldRequest) GetJobId() string {
@@ -345,7 +345,7 @@ type YieldResponse struct {
 
 func (x *YieldResponse) Reset() {
 	*x = YieldResponse{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[3]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -357,7 +357,7 @@ func (x *YieldResponse) String() string {
 func (*YieldResponse) ProtoMessage() {}
 
 func (x *YieldResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[3]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -370,7 +370,7 @@ func (x *YieldResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use YieldResponse.ProtoReflect.Descriptor instead.
 func (*YieldResponse) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{3}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *YieldResponse) GetSuccess() bool {
@@ -403,7 +403,7 @@ type ListGroupsRequest struct {
 
 func (x *ListGroupsRequest) Reset() {
 	*x = ListGroupsRequest{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[4]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -415,7 +415,7 @@ func (x *ListGroupsRequest) String() string {
 func (*ListGroupsRequest) ProtoMessage() {}
 
 func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[4]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -428,7 +428,7 @@ func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsRequest.ProtoReflect.Descriptor instead.
 func (*ListGroupsRequest) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{4}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{4}
 }
 
 // ListGroupsResponse is the response containing active groups.
@@ -442,7 +442,7 @@ type ListGroupsResponse struct {
 
 func (x *ListGroupsResponse) Reset() {
 	*x = ListGroupsResponse{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[5]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -454,7 +454,7 @@ func (x *ListGroupsResponse) String() string {
 func (*ListGroupsResponse) ProtoMessage() {}
 
 func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[5]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -467,7 +467,7 @@ func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsResponse.ProtoReflect.Descriptor instead.
 func (*ListGroupsResponse) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{5}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListGroupsResponse) GetGroupIds() []string {
@@ -488,7 +488,7 @@ type GetGroupStatusRequest struct {
 
 func (x *GetGroupStatusRequest) Reset() {
 	*x = GetGroupStatusRequest{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[6]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -500,7 +500,7 @@ func (x *GetGroupStatusRequest) String() string {
 func (*GetGroupStatusRequest) ProtoMessage() {}
 
 func (x *GetGroupStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[6]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -513,7 +513,7 @@ func (x *GetGroupStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetGroupStatusRequest) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{6}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetGroupStatusRequest) GetGroupId() string {
@@ -537,7 +537,7 @@ type GetGroupStatusResponse struct {
 
 func (x *GetGroupStatusResponse) Reset() {
 	*x = GetGroupStatusResponse{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[7]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -549,7 +549,7 @@ func (x *GetGroupStatusResponse) String() string {
 func (*GetGroupStatusResponse) ProtoMessage() {}
 
 func (x *GetGroupStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[7]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -562,7 +562,7 @@ func (x *GetGroupStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetGroupStatusResponse) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{7}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetGroupStatusResponse) GetGroup() *GroupStatus {
@@ -585,7 +585,7 @@ type GroupStatus struct {
 	// group_id is the unique identifier of the group.
 	GroupId string `protobuf:"bytes,1,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
 	// group_state is the current state of the group lock.
-	GroupState GroupStatus_State `protobuf:"varint,2,opt,name=group_state,json=groupState,proto3,enum=accelerator_orchestrator.v1alpha1.GroupStatus_State" json:"group_state,omitempty"`
+	GroupState GroupStatus_State `protobuf:"varint,2,opt,name=group_state,json=groupState,proto3,enum=timeslice_orchestrator.v1alpha1.GroupStatus_State" json:"group_state,omitempty"`
 	// state_timestamp is the time when the orchestrator entered the current state.
 	StateTimestamp *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=state_timestamp,json=stateTimestamp,proto3" json:"state_timestamp,omitempty"`
 	// locking_job is the job_id of the job currently holding the group lock.
@@ -608,7 +608,7 @@ type GroupStatus struct {
 
 func (x *GroupStatus) Reset() {
 	*x = GroupStatus{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[8]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +620,7 @@ func (x *GroupStatus) String() string {
 func (*GroupStatus) ProtoMessage() {}
 
 func (x *GroupStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[8]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +633,7 @@ func (x *GroupStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupStatus.ProtoReflect.Descriptor instead.
 func (*GroupStatus) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{8}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GroupStatus) GetGroupId() string {
@@ -692,7 +692,7 @@ type SnapshotAgentJobState struct {
 	// agent is the identifier of the Snapshot Agent (typically the node name).
 	Agent string `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
 	// job_state is the current state of the job's context on this agent.
-	JobState SnapshotAgentJobState_State `protobuf:"varint,2,opt,name=job_state,json=jobState,proto3,enum=accelerator_orchestrator.v1alpha1.SnapshotAgentJobState_State" json:"job_state,omitempty"`
+	JobState SnapshotAgentJobState_State `protobuf:"varint,2,opt,name=job_state,json=jobState,proto3,enum=timeslice_orchestrator.v1alpha1.SnapshotAgentJobState_State" json:"job_state,omitempty"`
 	// job_id is the unique identifier of the job.
 	JobId         string `protobuf:"bytes,3,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -701,7 +701,7 @@ type SnapshotAgentJobState struct {
 
 func (x *SnapshotAgentJobState) Reset() {
 	*x = SnapshotAgentJobState{}
-	mi := &file_accelerator_orchestrator_proto_msgTypes[9]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +713,7 @@ func (x *SnapshotAgentJobState) String() string {
 func (*SnapshotAgentJobState) ProtoMessage() {}
 
 func (x *SnapshotAgentJobState) ProtoReflect() protoreflect.Message {
-	mi := &file_accelerator_orchestrator_proto_msgTypes[9]
+	mi := &file_timeslice_orchestrator_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +726,7 @@ func (x *SnapshotAgentJobState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotAgentJobState.ProtoReflect.Descriptor instead.
 func (*SnapshotAgentJobState) Descriptor() ([]byte, []int) {
-	return file_accelerator_orchestrator_proto_rawDescGZIP(), []int{9}
+	return file_timeslice_orchestrator_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SnapshotAgentJobState) GetAgent() string {
@@ -750,11 +750,11 @@ func (x *SnapshotAgentJobState) GetJobId() string {
 	return ""
 }
 
-var File_accelerator_orchestrator_proto protoreflect.FileDescriptor
+var File_timeslice_orchestrator_proto protoreflect.FileDescriptor
 
-const file_accelerator_orchestrator_proto_rawDesc = "" +
+const file_timeslice_orchestrator_proto_rawDesc = "" +
 	"\n" +
-	"\x1eaccelerator_orchestrator.proto\x12!accelerator_orchestrator.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"B\n" +
+	"\x1ctimeslice_orchestrator.proto\x12\x1ftimeslice_orchestrator.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"B\n" +
 	"\x0eAcquireRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x19\n" +
 	"\bgroup_id\x18\x02 \x01(\tR\agroupId\"s\n" +
@@ -773,13 +773,13 @@ const file_accelerator_orchestrator_proto_rawDesc = "" +
 	"\x12ListGroupsResponse\x12\x1b\n" +
 	"\tgroup_ids\x18\x01 \x03(\tR\bgroupIds\"2\n" +
 	"\x15GetGroupStatusRequest\x12\x19\n" +
-	"\bgroup_id\x18\x01 \x01(\tR\agroupId\"\xc2\x01\n" +
-	"\x16GetGroupStatusResponse\x12D\n" +
-	"\x05group\x18\x01 \x01(\v2..accelerator_orchestrator.v1alpha1.GroupStatusR\x05group\x12b\n" +
-	"\x10agent_job_states\x18\x02 \x03(\v28.accelerator_orchestrator.v1alpha1.SnapshotAgentJobStateR\x0eagentJobStates\"\xd4\x03\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\"\xbe\x01\n" +
+	"\x16GetGroupStatusResponse\x12B\n" +
+	"\x05group\x18\x01 \x01(\v2,.timeslice_orchestrator.v1alpha1.GroupStatusR\x05group\x12`\n" +
+	"\x10agent_job_states\x18\x02 \x03(\v26.timeslice_orchestrator.v1alpha1.SnapshotAgentJobStateR\x0eagentJobStates\"\xd2\x03\n" +
 	"\vGroupStatus\x12\x19\n" +
-	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12U\n" +
-	"\vgroup_state\x18\x02 \x01(\x0e24.accelerator_orchestrator.v1alpha1.GroupStatus.StateR\n" +
+	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12S\n" +
+	"\vgroup_state\x18\x02 \x01(\x0e22.timeslice_orchestrator.v1alpha1.GroupStatus.StateR\n" +
 	"groupState\x12C\n" +
 	"\x0fstate_timestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x0estateTimestamp\x12\x1f\n" +
 	"\vlocking_job\x18\x04 \x01(\tR\n" +
@@ -796,10 +796,10 @@ const file_accelerator_orchestrator_proto_rawDesc = "" +
 	"STATE_IDLE\x10\x02\x12\x16\n" +
 	"\x12STATE_IDLE_YIELDED\x10\x03\x12\x10\n" +
 	"\fSTATE_LOCKED\x10\x04\x12\x13\n" +
-	"\x0fSTATE_SWITCHING\x10\x05\"\xa1\x02\n" +
+	"\x0fSTATE_SWITCHING\x10\x05\"\x9f\x02\n" +
 	"\x15SnapshotAgentJobState\x12\x14\n" +
-	"\x05agent\x18\x01 \x01(\tR\x05agent\x12[\n" +
-	"\tjob_state\x18\x02 \x01(\x0e2>.accelerator_orchestrator.v1alpha1.SnapshotAgentJobState.StateR\bjobState\x12\x15\n" +
+	"\x05agent\x18\x01 \x01(\tR\x05agent\x12Y\n" +
+	"\tjob_state\x18\x02 \x01(\x0e2<.timeslice_orchestrator.v1alpha1.SnapshotAgentJobState.StateR\bjobState\x12\x15\n" +
 	"\x06job_id\x18\x03 \x01(\tR\x05jobId\"~\n" +
 	"\x05State\x12\x15\n" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\x0e\n" +
@@ -808,57 +808,57 @@ const file_accelerator_orchestrator_proto_rawDesc = "" +
 	"\rSTATE_RUNNING\x10\x02\x12\x17\n" +
 	"\x13STATE_TRANSITIONING\x10\x03\x12\x0f\n" +
 	"\vSTATE_SAVED\x10\x04\x12\x11\n" +
-	"\rSTATE_FAULTED\x10\x052\x81\x04\n" +
-	"\x1eAcceleratorOrchestratorService\x12p\n" +
-	"\aAcquire\x121.accelerator_orchestrator.v1alpha1.AcquireRequest\x1a2.accelerator_orchestrator.v1alpha1.AcquireResponse\x12j\n" +
-	"\x05Yield\x12/.accelerator_orchestrator.v1alpha1.YieldRequest\x1a0.accelerator_orchestrator.v1alpha1.YieldResponse\x12y\n" +
+	"\rSTATE_FAULTED\x10\x052\xef\x03\n" +
+	"\x1cTimeSliceOrchestratorService\x12l\n" +
+	"\aAcquire\x12/.timeslice_orchestrator.v1alpha1.AcquireRequest\x1a0.timeslice_orchestrator.v1alpha1.AcquireResponse\x12f\n" +
+	"\x05Yield\x12-.timeslice_orchestrator.v1alpha1.YieldRequest\x1a..timeslice_orchestrator.v1alpha1.YieldResponse\x12u\n" +
 	"\n" +
-	"ListGroups\x124.accelerator_orchestrator.v1alpha1.ListGroupsRequest\x1a5.accelerator_orchestrator.v1alpha1.ListGroupsResponse\x12\x85\x01\n" +
-	"\x0eGetGroupStatus\x128.accelerator_orchestrator.v1alpha1.GetGroupStatusRequest\x1a9.accelerator_orchestrator.v1alpha1.GetGroupStatusResponseBfZdgithub.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/accelerator-orchestrator/api/v1alpha1;v1alpha1b\x06proto3"
+	"ListGroups\x122.timeslice_orchestrator.v1alpha1.ListGroupsRequest\x1a3.timeslice_orchestrator.v1alpha1.ListGroupsResponse\x12\x81\x01\n" +
+	"\x0eGetGroupStatus\x126.timeslice_orchestrator.v1alpha1.GetGroupStatusRequest\x1a7.timeslice_orchestrator.v1alpha1.GetGroupStatusResponseBdZbgithub.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/timeslice-orchestrator/api/v1alpha1;v1alpha1b\x06proto3"
 
 var (
-	file_accelerator_orchestrator_proto_rawDescOnce sync.Once
-	file_accelerator_orchestrator_proto_rawDescData []byte
+	file_timeslice_orchestrator_proto_rawDescOnce sync.Once
+	file_timeslice_orchestrator_proto_rawDescData []byte
 )
 
-func file_accelerator_orchestrator_proto_rawDescGZIP() []byte {
-	file_accelerator_orchestrator_proto_rawDescOnce.Do(func() {
-		file_accelerator_orchestrator_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_accelerator_orchestrator_proto_rawDesc), len(file_accelerator_orchestrator_proto_rawDesc)))
+func file_timeslice_orchestrator_proto_rawDescGZIP() []byte {
+	file_timeslice_orchestrator_proto_rawDescOnce.Do(func() {
+		file_timeslice_orchestrator_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_timeslice_orchestrator_proto_rawDesc), len(file_timeslice_orchestrator_proto_rawDesc)))
 	})
-	return file_accelerator_orchestrator_proto_rawDescData
+	return file_timeslice_orchestrator_proto_rawDescData
 }
 
-var file_accelerator_orchestrator_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_accelerator_orchestrator_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-var file_accelerator_orchestrator_proto_goTypes = []any{
-	(GroupStatus_State)(0),           // 0: accelerator_orchestrator.v1alpha1.GroupStatus.State
-	(SnapshotAgentJobState_State)(0), // 1: accelerator_orchestrator.v1alpha1.SnapshotAgentJobState.State
-	(*AcquireRequest)(nil),           // 2: accelerator_orchestrator.v1alpha1.AcquireRequest
-	(*AcquireResponse)(nil),          // 3: accelerator_orchestrator.v1alpha1.AcquireResponse
-	(*YieldRequest)(nil),             // 4: accelerator_orchestrator.v1alpha1.YieldRequest
-	(*YieldResponse)(nil),            // 5: accelerator_orchestrator.v1alpha1.YieldResponse
-	(*ListGroupsRequest)(nil),        // 6: accelerator_orchestrator.v1alpha1.ListGroupsRequest
-	(*ListGroupsResponse)(nil),       // 7: accelerator_orchestrator.v1alpha1.ListGroupsResponse
-	(*GetGroupStatusRequest)(nil),    // 8: accelerator_orchestrator.v1alpha1.GetGroupStatusRequest
-	(*GetGroupStatusResponse)(nil),   // 9: accelerator_orchestrator.v1alpha1.GetGroupStatusResponse
-	(*GroupStatus)(nil),              // 10: accelerator_orchestrator.v1alpha1.GroupStatus
-	(*SnapshotAgentJobState)(nil),    // 11: accelerator_orchestrator.v1alpha1.SnapshotAgentJobState
+var file_timeslice_orchestrator_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_timeslice_orchestrator_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_timeslice_orchestrator_proto_goTypes = []any{
+	(GroupStatus_State)(0),           // 0: timeslice_orchestrator.v1alpha1.GroupStatus.State
+	(SnapshotAgentJobState_State)(0), // 1: timeslice_orchestrator.v1alpha1.SnapshotAgentJobState.State
+	(*AcquireRequest)(nil),           // 2: timeslice_orchestrator.v1alpha1.AcquireRequest
+	(*AcquireResponse)(nil),          // 3: timeslice_orchestrator.v1alpha1.AcquireResponse
+	(*YieldRequest)(nil),             // 4: timeslice_orchestrator.v1alpha1.YieldRequest
+	(*YieldResponse)(nil),            // 5: timeslice_orchestrator.v1alpha1.YieldResponse
+	(*ListGroupsRequest)(nil),        // 6: timeslice_orchestrator.v1alpha1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),       // 7: timeslice_orchestrator.v1alpha1.ListGroupsResponse
+	(*GetGroupStatusRequest)(nil),    // 8: timeslice_orchestrator.v1alpha1.GetGroupStatusRequest
+	(*GetGroupStatusResponse)(nil),   // 9: timeslice_orchestrator.v1alpha1.GetGroupStatusResponse
+	(*GroupStatus)(nil),              // 10: timeslice_orchestrator.v1alpha1.GroupStatus
+	(*SnapshotAgentJobState)(nil),    // 11: timeslice_orchestrator.v1alpha1.SnapshotAgentJobState
 	(*timestamppb.Timestamp)(nil),    // 12: google.protobuf.Timestamp
 }
-var file_accelerator_orchestrator_proto_depIdxs = []int32{
-	10, // 0: accelerator_orchestrator.v1alpha1.GetGroupStatusResponse.group:type_name -> accelerator_orchestrator.v1alpha1.GroupStatus
-	11, // 1: accelerator_orchestrator.v1alpha1.GetGroupStatusResponse.agent_job_states:type_name -> accelerator_orchestrator.v1alpha1.SnapshotAgentJobState
-	0,  // 2: accelerator_orchestrator.v1alpha1.GroupStatus.group_state:type_name -> accelerator_orchestrator.v1alpha1.GroupStatus.State
-	12, // 3: accelerator_orchestrator.v1alpha1.GroupStatus.state_timestamp:type_name -> google.protobuf.Timestamp
-	1,  // 4: accelerator_orchestrator.v1alpha1.SnapshotAgentJobState.job_state:type_name -> accelerator_orchestrator.v1alpha1.SnapshotAgentJobState.State
-	2,  // 5: accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService.Acquire:input_type -> accelerator_orchestrator.v1alpha1.AcquireRequest
-	4,  // 6: accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService.Yield:input_type -> accelerator_orchestrator.v1alpha1.YieldRequest
-	6,  // 7: accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService.ListGroups:input_type -> accelerator_orchestrator.v1alpha1.ListGroupsRequest
-	8,  // 8: accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService.GetGroupStatus:input_type -> accelerator_orchestrator.v1alpha1.GetGroupStatusRequest
-	3,  // 9: accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService.Acquire:output_type -> accelerator_orchestrator.v1alpha1.AcquireResponse
-	5,  // 10: accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService.Yield:output_type -> accelerator_orchestrator.v1alpha1.YieldResponse
-	7,  // 11: accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService.ListGroups:output_type -> accelerator_orchestrator.v1alpha1.ListGroupsResponse
-	9,  // 12: accelerator_orchestrator.v1alpha1.AcceleratorOrchestratorService.GetGroupStatus:output_type -> accelerator_orchestrator.v1alpha1.GetGroupStatusResponse
+var file_timeslice_orchestrator_proto_depIdxs = []int32{
+	10, // 0: timeslice_orchestrator.v1alpha1.GetGroupStatusResponse.group:type_name -> timeslice_orchestrator.v1alpha1.GroupStatus
+	11, // 1: timeslice_orchestrator.v1alpha1.GetGroupStatusResponse.agent_job_states:type_name -> timeslice_orchestrator.v1alpha1.SnapshotAgentJobState
+	0,  // 2: timeslice_orchestrator.v1alpha1.GroupStatus.group_state:type_name -> timeslice_orchestrator.v1alpha1.GroupStatus.State
+	12, // 3: timeslice_orchestrator.v1alpha1.GroupStatus.state_timestamp:type_name -> google.protobuf.Timestamp
+	1,  // 4: timeslice_orchestrator.v1alpha1.SnapshotAgentJobState.job_state:type_name -> timeslice_orchestrator.v1alpha1.SnapshotAgentJobState.State
+	2,  // 5: timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService.Acquire:input_type -> timeslice_orchestrator.v1alpha1.AcquireRequest
+	4,  // 6: timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService.Yield:input_type -> timeslice_orchestrator.v1alpha1.YieldRequest
+	6,  // 7: timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService.ListGroups:input_type -> timeslice_orchestrator.v1alpha1.ListGroupsRequest
+	8,  // 8: timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService.GetGroupStatus:input_type -> timeslice_orchestrator.v1alpha1.GetGroupStatusRequest
+	3,  // 9: timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService.Acquire:output_type -> timeslice_orchestrator.v1alpha1.AcquireResponse
+	5,  // 10: timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService.Yield:output_type -> timeslice_orchestrator.v1alpha1.YieldResponse
+	7,  // 11: timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService.ListGroups:output_type -> timeslice_orchestrator.v1alpha1.ListGroupsResponse
+	9,  // 12: timeslice_orchestrator.v1alpha1.TimeSliceOrchestratorService.GetGroupStatus:output_type -> timeslice_orchestrator.v1alpha1.GetGroupStatusResponse
 	9,  // [9:13] is the sub-list for method output_type
 	5,  // [5:9] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
@@ -866,27 +866,27 @@ var file_accelerator_orchestrator_proto_depIdxs = []int32{
 	0,  // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_accelerator_orchestrator_proto_init() }
-func file_accelerator_orchestrator_proto_init() {
-	if File_accelerator_orchestrator_proto != nil {
+func init() { file_timeslice_orchestrator_proto_init() }
+func file_timeslice_orchestrator_proto_init() {
+	if File_timeslice_orchestrator_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_accelerator_orchestrator_proto_rawDesc), len(file_accelerator_orchestrator_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_timeslice_orchestrator_proto_rawDesc), len(file_timeslice_orchestrator_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_accelerator_orchestrator_proto_goTypes,
-		DependencyIndexes: file_accelerator_orchestrator_proto_depIdxs,
-		EnumInfos:         file_accelerator_orchestrator_proto_enumTypes,
-		MessageInfos:      file_accelerator_orchestrator_proto_msgTypes,
+		GoTypes:           file_timeslice_orchestrator_proto_goTypes,
+		DependencyIndexes: file_timeslice_orchestrator_proto_depIdxs,
+		EnumInfos:         file_timeslice_orchestrator_proto_enumTypes,
+		MessageInfos:      file_timeslice_orchestrator_proto_msgTypes,
 	}.Build()
-	File_accelerator_orchestrator_proto = out.File
-	file_accelerator_orchestrator_proto_goTypes = nil
-	file_accelerator_orchestrator_proto_depIdxs = nil
+	File_timeslice_orchestrator_proto = out.File
+	file_timeslice_orchestrator_proto_goTypes = nil
+	file_timeslice_orchestrator_proto_depIdxs = nil
 }

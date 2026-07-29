@@ -28,7 +28,7 @@ type Logger interface {
 // FakeRLJob simulates a Reinforcement Learning job that orchestrates samplers and trainers.
 type FakeRLJob struct {
 	name                   string
-	client                 pb.AcceleratorOrchestratorServiceClient
+	client                 pb.TimeSliceOrchestratorServiceClient
 	clientset              kubernetes.Interface
 	iterations             int
 	t                      Logger
@@ -47,7 +47,7 @@ type FakeRLJob struct {
 
 func NewFakeRLJob(
 	name string,
-	client pb.AcceleratorOrchestratorServiceClient,
+	client pb.TimeSliceOrchestratorServiceClient,
 	clientset kubernetes.Interface,
 	iterations int,
 	t Logger,

@@ -32,7 +32,7 @@ import (
 func RunSingleRLJobScenario(
 	ctx context.Context,
 	clientset kubernetes.Interface,
-	client pb.AcceleratorOrchestratorServiceClient,
+	client pb.TimeSliceOrchestratorServiceClient,
 	logger Logger,
 	samplerTemplateKey string,
 	trainerTemplateKey string,
@@ -104,7 +104,7 @@ func RunSingleRLJobScenario(
 func RunQueuedRLJobsScenario(
 	ctx context.Context,
 	clientset kubernetes.Interface,
-	client pb.AcceleratorOrchestratorServiceClient,
+	client pb.TimeSliceOrchestratorServiceClient,
 	logger Logger,
 	samplerTemplateKey string,
 	trainerTemplateKey string,
