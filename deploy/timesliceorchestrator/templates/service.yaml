@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "acceleratororchestrator.fullname" . }}
+  name: {{ include "timesliceorchestrator.fullname" . }}
   namespace: timeslice-system
   labels:
-    {{- include "acceleratororchestrator.labels" . | nindent 4 }}
+    {{- include "timesliceorchestrator.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -17,4 +17,4 @@ spec:
       protocol: TCP
       name: metrics
   selector:
-    {{- include "acceleratororchestrator.selectorLabels" . | nindent 4 }}
+    {{- include "timesliceorchestrator.selectorLabels" . | nindent 4 }}

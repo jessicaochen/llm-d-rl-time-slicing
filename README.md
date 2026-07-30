@@ -48,7 +48,7 @@ This architecture consists of the following foundational components:
 ```python
 from timeslice import TimeSliceOrchestratorClient
 
-client = TimeSliceOrchestratorClient(target="timeslice-acceleratororchestrator.timeslice-system:50051",
+client = TimeSliceOrchestratorClient(target="timeslice-timesliceorchestrator.timeslice-system:50051",
                                      job_id="my-job", group_id="trainer-group")
 
 @client.on_accelerators()

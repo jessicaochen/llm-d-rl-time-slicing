@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/llm-d-incubation/llm-d-rl-time-slicing/acceleratororchestrator
+  repository: ghcr.io/llm-d-incubation/llm-d-rl-time-slicing/timesliceorchestrator
   pullPolicy: Always
   tag: "latest"
 

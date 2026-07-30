@@ -202,7 +202,7 @@ The following Python example demonstrates how to use the `TimeSliceOrchestratorC
 from timeslice import TimeSliceOrchestratorClient
 
 orchestrator = TimeSliceOrchestratorClient(
-    target="accelerator-orchestrator.timeslice-system.svc.cluster.local:50051",
+    target="timeslice-timesliceorchestrator.timeslice-system.svc.cluster.local:50051",
     job_id="job-a",
     group_id="group-ab-sampler"
 )
@@ -243,7 +243,7 @@ from timeslice import TimeSliceOrchestratorClient
 import time
 
 # Initialize the client. The job_id identifies this workload (e.g., 'job-a')
-orchestrator = TimeSliceOrchestratorClient(target="accelerator-orchestrator.timeslice-system.svc.cluster.local:50051", job_id="job-a")
+orchestrator = TimeSliceOrchestratorClient(target="timeslice-timesliceorchestrator.timeslice-system.svc.cluster.local:50051", job_id="job-a")
 
 # Decorate GPU tasks to automatically yield/acquire hardware via the Orchestrator
 @orchestrator.on_accelerators(group_id="group-ab-trainer")
@@ -283,7 +283,7 @@ Use the `rlts` CLI to interact with and debug the TimeSlice Orchestrator.
 #### Port-Forwarding to the Orchestrator
 Port-forward to the service (default port `50051`) if running locally:
 ```bash
-kubectl port-forward svc/timeslice-acceleratororchestrator 50051:50051 -n timeslice-system
+kubectl port-forward svc/timeslice-timesliceorchestrator 50051:50051 -n timeslice-system
 ```
 
 #### Common Commands

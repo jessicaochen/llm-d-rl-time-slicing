@@ -16,10 +16,10 @@ This will create the `rlts` binary in the `bin` directory.
 
 If the TimeSlice Orchestrator is deployed inside a Kubernetes cluster, you need to establish a connection to it. The easiest way to do this from your local machine is using `kubectl port-forward`.
 
-Assuming the orchestrator is deployed as a service named `acceleratororchestrator` in the default namespace:
+Assuming the orchestrator is deployed as a service named `timesliceorchestrator` in the default namespace:
 
 ```bash
-kubectl port-forward svc/acceleratororchestrator 50051:50051
+kubectl port-forward svc/timesliceorchestrator 50051:50051
 ```
 
 This forwards traffic from your local port `50051` to the orchestrator service in the cluster. Keep this command running in a separate terminal.

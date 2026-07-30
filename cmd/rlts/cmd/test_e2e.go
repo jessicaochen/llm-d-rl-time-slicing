@@ -135,7 +135,7 @@ var orchestratorTestCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to connect to orchestrator at %s: %w "+
 				"(make sure to port-forward if necessary: "+
-				"kubectl port-forward svc/timeslice-acceleratororchestrator 50051:50051 -n timeslice-system)",
+				"kubectl port-forward svc/timeslice-timesliceorchestrator 50051:50051 -n timeslice-system)",
 				orchestratorAddr, err)
 		}
 		fmt.Printf("Connected successfully.\n\n")

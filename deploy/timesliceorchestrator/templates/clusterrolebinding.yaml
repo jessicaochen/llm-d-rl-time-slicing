@@ -2,15 +2,15 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "acceleratororchestrator.fullname" . }}
+  name: {{ include "timesliceorchestrator.fullname" . }}
   labels:
-    {{- include "acceleratororchestrator.labels" . | nindent 4 }}
+    {{- include "timesliceorchestrator.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "acceleratororchestrator.fullname" . }}
+  name: {{ include "timesliceorchestrator.fullname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "acceleratororchestrator.serviceAccountName" . }}
+    name: {{ include "timesliceorchestrator.serviceAccountName" . }}
     namespace: timeslice-system
 {{- end }}

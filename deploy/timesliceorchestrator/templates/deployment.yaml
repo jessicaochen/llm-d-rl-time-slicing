@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "acceleratororchestrator.fullname" . }}
+  name: {{ include "timesliceorchestrator.fullname" . }}
   namespace: timeslice-system
   labels:
-    {{- include "acceleratororchestrator.labels" . | nindent 4 }}
+    {{- include "timesliceorchestrator.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "acceleratororchestrator.selectorLabels" . | nindent 6 }}
+      {{- include "timesliceorchestrator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "acceleratororchestrator.selectorLabels" . | nindent 8 }}
+        {{- include "timesliceorchestrator.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "acceleratororchestrator.serviceAccountName" . }}
+      serviceAccountName: {{ include "timesliceorchestrator.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

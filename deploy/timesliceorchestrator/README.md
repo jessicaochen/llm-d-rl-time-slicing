@@ -1,6 +1,6 @@
-# Deploying Accelerator Orchestrator
+# Deploying TimeSlice Orchestrator
 
-This directory contains the Helm chart for deploying the Accelerator Orchestrator in a Kubernetes cluster.
+This directory contains the Helm chart for deploying the TimeSlice Orchestrator in a Kubernetes cluster.
 
 Public images are published to `ghcr.io/llm-d-incubation/llm-d-rl-time-slicing/*` by CI: `latest` on every merge to main; versioned tags via a manual workflow run.
 
@@ -13,7 +13,7 @@ Public images are published to `ghcr.io/llm-d-incubation/llm-d-rl-time-slicing/*
 ## Deployment with Helm
 
 > [!IMPORTANT]
-> The Accelerator Orchestrator is hardcoded to manage its locks (stored as a ConfigMap) in the `timeslice-system` namespace. Consequently, the Helm chart creates namespace-scoped RBAC resources (`Role` and `RoleBinding`) specifically in the `timeslice-system` namespace.
+> The TimeSlice Orchestrator is hardcoded to manage its locks (stored as a ConfigMap) in the `timeslice-system` namespace. Consequently, the Helm chart creates namespace-scoped RBAC resources (`Role` and `RoleBinding`) specifically in the `timeslice-system` namespace.
 >
 > It is highly recommended to deploy the orchestrator itself into the `timeslice-system` namespace.
 
@@ -22,7 +22,7 @@ To deploy the orchestrator using the local Helm chart:
 1.  **Install the chart**:
     From the `deploy` directory, install or upgrade the chart into the `timeslice-system` namespace (creating it if it doesn't exist):
     ```bash
-    helm upgrade --install acceleratororchestrator ./acceleratororchestrator \
+    helm upgrade --install timesliceorchestrator ./timesliceorchestrator \
       --namespace timeslice-system \
       --create-namespace
     ```
@@ -34,12 +34,12 @@ To deploy the orchestrator using the local Helm chart:
 
 2.  **Verify the deployment**:
     ```bash
-    kubectl get pods -n timeslice-system -l app.kubernetes.io/name=acceleratororchestrator
+    kubectl get pods -n timeslice-system -l app.kubernetes.io/name=timesliceorchestrator
     ```
 
 3.  **Uninstall the chart**:
     ```bash
-    helm uninstall acceleratororchestrator --namespace timeslice-system
+    helm uninstall timesliceorchestrator --namespace timeslice-system
     ```
 
 ## Development Workflow: Custom Images
@@ -59,7 +59,7 @@ We use the provided `Makefile` targets to build and push the container image. Th
     ```bash
     make image-push-orchestrator
     ```
-    This will build the image using `docker/acceleratororchestrator/Dockerfile` and push it to `your-custom-registry.com/your-project/acceleratororchestrator:dev-<hash>`.
+    This will build the image using `docker/timesliceorchestrator/Dockerfile` and push it to `your-custom-registry.com/your-project/timesliceorchestrator:dev-<hash>`.
 
 ### 2. Deploy with your Custom Image
 
@@ -70,27 +70,27 @@ Once your image is pushed, you can instruct Helm to use it.
 This avoids modifying files in your git tree:
 
 ```bash
-helm upgrade --install acceleratororchestrator ./acceleratororchestrator \
+helm upgrade --install timesliceorchestrator ./timesliceorchestrator \
   --namespace timeslice-system \
   --create-namespace \
-  --set image.repository=your-custom-registry.com/your-project/acceleratororchestrator \
+  --set image.repository=your-custom-registry.com/your-project/timesliceorchestrator \
   --set image.tag=dev
 ```
 
 #### Option B: Via `values.yaml`
 
-Edit `deploy/acceleratororchestrator/values.yaml` directly:
+Edit `deploy/timesliceorchestrator/values.yaml` directly:
 
 ```yaml
 image:
-  repository: your-custom-registry.com/your-project/acceleratororchestrator
+  repository: your-custom-registry.com/your-project/timesliceorchestrator
   pullPolicy: IfNotPresent
   tag: "dev"
 ```
 
 And then run:
 ```bash
-helm upgrade --install acceleratororchestrator ./acceleratororchestrator \
+helm upgrade --install timesliceorchestrator ./timesliceorchestrator \
   --namespace timeslice-system \
   --create-namespace
 ```
