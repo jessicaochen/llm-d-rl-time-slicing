@@ -12,7 +12,7 @@ var (
 	// QueueDepth tracks the current number of jobs waiting in the queue for a group lock.
 	QueueDepth = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "accelerator_orchestrator_queue_depth",
+			Name: "timeslice_orchestrator_queue_depth",
 			Help: "Current number of jobs waiting in the queue for a group lock.",
 		},
 		[]string{"group_id"},
@@ -21,7 +21,7 @@ var (
 	// AcquireWaitDuration tracks the time spent by a job waiting in Acquire() until lock acquisition & context restoration.
 	AcquireWaitDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "accelerator_orchestrator_acquire_wait_duration_seconds",
+			Name:    "timeslice_orchestrator_acquire_wait_duration_seconds",
 			Help:    "Time spent by a job waiting in Acquire() until lock acquisition and context restoration.",
 			Buckets: durationBuckets,
 		},
@@ -31,7 +31,7 @@ var (
 	// AgentOperationDuration tracks the duration of snapshot and restore operations as reported by snapshot agents.
 	AgentOperationDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "accelerator_orchestrator_agent_operation_duration_seconds",
+			Name:    "timeslice_orchestrator_agent_operation_duration_seconds",
 			Help:    "Duration of snapshot and restore operations as reported by snapshot agents.",
 			Buckets: durationBuckets,
 		},
@@ -41,7 +41,7 @@ var (
 	// DeferredSnapshotsTotal tracks the number of times a snapshot was deferred during Yield() due to zero waiters.
 	DeferredSnapshotsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "accelerator_orchestrator_deferred_snapshots_total",
+			Name: "timeslice_orchestrator_deferred_snapshots_total",
 			Help: "Number of times a snapshot was deferred during Yield() due to zero waiters.",
 		},
 		[]string{"group_id"},

@@ -15,7 +15,7 @@ const (
 	// Namespace is the namespace where the locks configmap resides.
 	Namespace = "timeslice-system"
 	// ConfigMapName is the name of the configmap storing the locks.
-	ConfigMapName = "accelerator-orchestrator-locks"
+	ConfigMapName = "timeslice-orchestrator-locks"
 )
 
 // ConfigMapLockStore implements LockStore using a Kubernetes ConfigMap.
