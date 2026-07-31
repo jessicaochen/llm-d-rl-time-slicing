@@ -1,0 +1,102 @@
+# Canonical multi-node sharing setup: two sampler deployments, two replicas
+# each. Every pod claims one timeslice GPU via a ResourceClaimTemplate against
+# the gpu.timeslice DeviceClass. Pods of one deployment repel each other
+# across nodes (required anti-affinity on kubernetes.io/hostname), so with the
+# 3-node sampler pool the expectation is pods of different deployments sharing
+# a node's GPU (allowMultipleAllocations), never two pods of the same
+# deployment on one node.
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  name: timeslice-gpu
+spec:
+  spec:
+    devices:
+      requests:
+        - name: gpu
+          exactly:
+            deviceClassName: gpu.timeslice
+            allocationMode: ExactCount
+            count: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sampler-a
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sampler-a
+  template:
+    metadata:
+      labels:
+        app: sampler-a
+        experiment: dra-multihost-canonical
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: sampler-gpu-pool
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: timeslice.io/shared
+          operator: Exists
+          effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: sampler-a
+              topologyKey: kubernetes.io/hostname
+      resourceClaims:
+        - name: gpu
+          resourceClaimTemplateName: timeslice-gpu
+      containers:
+        - name: sampler
+          image: registry.k8s.io/pause:3.10
+          resources:
+            claims:
+              - name: gpu
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sampler-b
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sampler-b
+  template:
+    metadata:
+      labels:
+        app: sampler-b
+        experiment: dra-multihost-canonical
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: sampler-gpu-pool
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: timeslice.io/shared
+          operator: Exists
+          effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: sampler-b
+              topologyKey: kubernetes.io/hostname
+      resourceClaims:
+        - name: gpu
+          resourceClaimTemplateName: timeslice-gpu
+      containers:
+        - name: sampler
+          image: registry.k8s.io/pause:3.10
+          resources:
+            claims:
+              - name: gpu

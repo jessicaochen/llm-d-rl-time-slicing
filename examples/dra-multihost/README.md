@@ -112,3 +112,4 @@ observed result.
 | # | Experiment | Status |
 |---|---|---|
 | 00 | [DeviceClass `gpu.timeslice`](00-deviceclass/deviceclass.yaml) — selects shareable (`allowMultipleAllocations`) `gpu.nvidia.com` GPUs; maps extended resource `timeslice.io/gpu` | Deployed, accepted; CEL selector verified against live ResourceSlices |
+| 01 | [Canonical samplers](01-canonical-samplers/samplers.yaml) — 2 deployments × 2 replicas on the sampler pool, one `gpu.timeslice` claim per pod (shared ResourceClaimTemplate), required per-deployment anti-affinity across nodes | Behaves as expected: all 4 claims allocated with distinct shareIDs; where two pods (one per deployment) landed on the same node they share that node's single L4 (`gpu-0`, two shareIDs on one device); no same-deployment co-location. 4 pods spread 2/1/1 over the 3 nodes — nothing forces 2/2 packing, so one node ended up exclusive per deployment |
