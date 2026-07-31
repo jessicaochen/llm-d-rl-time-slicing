@@ -111,4 +111,4 @@ observed result.
 
 | # | Experiment | Status |
 |---|---|---|
-| — | — | — |
+| 00 | [DeviceClass `gpu.timeslice`](00-deviceclass/deviceclass.yaml) — selects shareable (`allowMultipleAllocations`) `gpu.nvidia.com` GPUs; maps extended resource `timeslice.io/gpu` | Deployed, accepted; CEL selector verified against live ResourceSlices |
