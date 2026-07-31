@@ -109,8 +109,13 @@ To be filled in as we go. Planned shape: one numbered subfolder per
 experiment with its manifests and a README stating hypothesis, steps, and
 observed result.
 
+Each experiment manifest is self-contained (includes the `gpu.timeslice`
+DeviceClass — CEL-selecting shareable `allowMultipleAllocations` GPUs, extended
+resource name `timeslice.io/gpu` — and the `timeslice-gpu`
+ResourceClaimTemplate) and is run against a clean cluster: tear down the
+previous experiment's deployments first.
+
 | # | Experiment | Status |
 |---|---|---|
-| 00 | [DeviceClass `gpu.timeslice`](00-deviceclass/deviceclass.yaml) — selects shareable (`allowMultipleAllocations`) `gpu.nvidia.com` GPUs; maps extended resource `timeslice.io/gpu` | Deployed, accepted; CEL selector verified against live ResourceSlices |
-| 01 | [Canonical samplers](01-canonical-samplers/samplers.yaml) — 2 deployments × 2 replicas on the sampler pool, one `gpu.timeslice` claim per pod (shared ResourceClaimTemplate), required per-deployment anti-affinity across nodes | Behaves as expected: all 4 claims allocated with distinct shareIDs; where two pods (one per deployment) landed on the same node they share that node's single L4 (`gpu-0`, two shareIDs on one device); no same-deployment co-location. 4 pods spread 2/1/1 over the 3 nodes — nothing forces 2/2 packing, so one node ended up exclusive per deployment |
-| 02 | [Oversubscription edge cases](02-oversubscription/samplers.yaml) — four more sampler deployments (same properties as 01) with 1, 2, 3, and 4 replicas, on top of 01 still running | Behaves as expected: 9/10 pods scheduled; only the 4th replica of the 4-replica deployment stays Pending, and its FailedScheduling event cites anti-affinity on the 3 sampler nodes (not GPU capacity). No same-deployment co-location. Combined with 01, single L4s carried 5/5/3 concurrent shares — unlimited oversubscription allocates freely |
+| 01 | [Canonical samplers](01-canonical-samplers/samplers.yaml) — 2 deployments × 2 replicas on the sampler pool, one `gpu.timeslice` claim per pod, required per-deployment anti-affinity across nodes | Behaves as expected: all 4 claims allocated with distinct shareIDs; where two pods (one per deployment) landed on the same node they share that node's single L4 (`gpu-0`, two shareIDs on one device); no same-deployment co-location. 4 pods spread 2/1/1 over the 3 nodes — nothing forces 2/2 packing, so one node ended up exclusive per deployment |
+| 02 | [Oversubscription edge cases](02-oversubscription/samplers.yaml) — four sampler deployments (same properties as 01) with 1, 2, 3, and 4 replicas | Behaves as expected: 9/10 pods scheduled; only the 4th replica of the 4-replica deployment stays Pending — its FailedScheduling event cites anti-affinity on the 3 sampler nodes (never GPU capacity), its claim stays unallocated, and the autoscaler does not scale up. No same-deployment co-location. The L4s carried 4/3/2 concurrent shares — unlimited oversubscription allocates freely with no admission control from DRA |

@@ -3,6 +3,29 @@
 # pod, required per-deployment anti-affinity). With a 3-node pool, the fourth
 # replica of sampler-r4 cannot satisfy anti-affinity and must stay Pending;
 # everything else should schedule since shares are unlimited.
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: gpu.timeslice
+spec:
+  selectors:
+  - cel:
+      expression: "device.allowMultipleAllocations == true && device.driver == 'gpu.nvidia.com' && device.attributes['gpu.nvidia.com'].type == 'gpu'"
+  extendedResourceName: timeslice.io/gpu
+---
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  name: timeslice-gpu
+spec:
+  spec:
+    devices:
+      requests:
+        - name: gpu
+          exactly:
+            deviceClassName: gpu.timeslice
+            allocationMode: ExactCount
+            count: 1
 ---
 apiVersion: apps/v1
 kind: Deployment

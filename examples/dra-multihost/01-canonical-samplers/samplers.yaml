@@ -6,6 +6,16 @@
 # a node's GPU (allowMultipleAllocations), never two pods of the same
 # deployment on one node.
 apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: gpu.timeslice
+spec:
+  selectors:
+  - cel:
+      expression: "device.allowMultipleAllocations == true && device.driver == 'gpu.nvidia.com' && device.attributes['gpu.nvidia.com'].type == 'gpu'"
+  extendedResourceName: timeslice.io/gpu
+---
+apiVersion: resource.k8s.io/v1
 kind: ResourceClaimTemplate
 metadata:
   name: timeslice-gpu
