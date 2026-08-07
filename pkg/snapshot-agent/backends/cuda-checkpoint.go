@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os/exec"
+	"sort"
 	"strconv"
 	"sync"
 	"syscall"
@@ -156,7 +157,7 @@ func (c *CudaCheckpoint) Restore(ctx context.Context, req Request) error {
 	return nil
 }
 
-// ExtractPIDStrings extracts PID strings from a BackendConfig.
+// ExtractPIDStrings extracts PID strings from a BackendConfig and returns them sorted in ascending numeric order.
 func ExtractPIDStrings(config *pb.BackendConfig) []string {
 	if config == nil {
 		return nil
@@ -169,20 +170,34 @@ func ExtractPIDStrings(config *pb.BackendConfig) []string {
 	if target == nil {
 		return nil
 	}
-	pids := make([]string, 0, len(target.GetPids()))
-	for _, pid := range target.GetPids() {
-		pids = append(pids, strconv.Itoa(int(pid)))
+	raw := target.GetPids()
+	if len(raw) == 0 {
+		return nil
+	}
+	intPIDs := make([]int, len(raw))
+	for i, p := range raw {
+		intPIDs[i] = int(p)
+	}
+	sort.Ints(intPIDs)
+	pids := make([]string, len(intPIDs))
+	for i, p := range intPIDs {
+		pids[i] = strconv.Itoa(p)
 	}
 	return pids
 }
 
-// BuildCudaConfig wraps PID strings into a BackendConfig.
+// BuildCudaConfig wraps PID strings into a BackendConfig, sorting PIDs in ascending numeric order.
 func BuildCudaConfig(pidStrings []string) *pb.BackendConfig {
-	pids := make([]int32, 0, len(pidStrings))
+	intPIDs := make([]int, 0, len(pidStrings))
 	for _, s := range pidStrings {
-		if pid, err := strconv.ParseInt(s, 10, 32); err == nil {
-			pids = append(pids, int32(pid))
+		if pid, err := strconv.Atoi(s); err == nil {
+			intPIDs = append(intPIDs, pid)
 		}
+	}
+	sort.Ints(intPIDs)
+	pids := make([]int32, len(intPIDs))
+	for i, p := range intPIDs {
+		pids[i] = int32(p)
 	}
 	return &pb.BackendConfig{
 		Backend: &pb.BackendConfig_Cuda{
@@ -211,15 +226,17 @@ func (c *CudaCheckpoint) runSudoCommand(ctx context.Context, name string, args .
 
 func (c *CudaCheckpoint) checkpointPIDs(ctx context.Context, pids []string) error {
 	binaryPath := c.getCudaCheckpointPath()
-	pidArgs := make([]string, 0, 2*len(pids))
+	// Lock all processes sequentially in ascending order
 	for _, pid := range pids {
-		pidArgs = append(pidArgs, "--pid", pid)
+		if err := c.runSudoCommand(ctx, binaryPath, "--action", "lock", "--pid", pid); err != nil {
+			return fmt.Errorf("cuda-checkpoint lock failed for PID %s: %w", pid, err)
+		}
 	}
-	if err := c.runSudoCommand(ctx, binaryPath, append([]string{"--action", "lock"}, pidArgs...)...); err != nil {
-		return fmt.Errorf("cuda-checkpoint lock failed: %w", err)
-	}
-	if err := c.runSudoCommand(ctx, binaryPath, append([]string{"--action", "checkpoint"}, pidArgs...)...); err != nil {
-		return fmt.Errorf("cuda-checkpoint checkpoint failed: %w", err)
+	// Checkpoint all processes sequentially in ascending order
+	for _, pid := range pids {
+		if err := c.runSudoCommand(ctx, binaryPath, "--action", "checkpoint", "--pid", pid); err != nil {
+			return fmt.Errorf("cuda-checkpoint checkpoint failed for PID %s: %w", pid, err)
+		}
 	}
 	return nil
 }
@@ -268,12 +285,11 @@ func (c *CudaCheckpoint) signalPIDs(pids []string, sig syscall.Signal) error {
 
 func (c *CudaCheckpoint) restorePIDs(ctx context.Context, pids []string) error {
 	binaryPath := c.getCudaCheckpointPath()
-	pidArgs := make([]string, 0, 2*len(pids))
+	// Restore/toggle all processes sequentially in ascending order
 	for _, pid := range pids {
-		pidArgs = append(pidArgs, "--pid", pid)
-	}
-	if err := c.runSudoCommand(ctx, binaryPath, append([]string{"--toggle"}, pidArgs...)...); err != nil {
-		return fmt.Errorf("cuda-checkpoint toggle failed: %w", err)
+		if err := c.runSudoCommand(ctx, binaryPath, "--toggle", "--pid", pid); err != nil {
+			return fmt.Errorf("cuda-checkpoint toggle failed for PID %s: %w", pid, err)
+		}
 	}
 	return nil
 }

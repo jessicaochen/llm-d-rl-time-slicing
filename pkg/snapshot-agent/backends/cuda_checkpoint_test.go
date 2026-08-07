@@ -133,7 +133,7 @@ type shimRecorder struct {
 func (r *shimRecorder) trackedBackend(shim backends.NCCLShimConfig) *backends.CudaCheckpoint {
 	c := backends.NewCudaCheckpoint(backends.WithNCCLShim(shim))
 	c.SetExecCommand(func(_ context.Context, _ string, args ...string) ([]byte, error) {
-		r.calls = append(r.calls, "exec:"+strings.Join(args[:2], " "))
+		r.calls = append(r.calls, "exec:"+strings.Join(args, " "))
 		return nil, nil
 	})
 	c.SetSignalProcess(func(pid int, sig syscall.Signal) error {
@@ -147,15 +147,18 @@ func TestSnapshotWithNCCLShim(t *testing.T) {
 	rec := &shimRecorder{}
 	c := rec.trackedBackend(backends.NCCLShimConfig{Enabled: true, DestroyWait: time.Millisecond})
 
-	if err := c.Snapshot(context.Background(), backends.Request{JobID: "test-job", Config: cudaConfig(123, 456)}); err != nil {
+	// Pass PIDs in reverse order to verify ascending sort normalization
+	if err := c.Snapshot(context.Background(), backends.Request{JobID: "test-job", Config: cudaConfig(456, 123)}); err != nil {
 		t.Fatalf("Snapshot() error = %v", err)
 	}
 
 	want := []string{
 		"signal:123:35",
 		"signal:456:35",
-		"exec:--action lock",
-		"exec:--action checkpoint",
+		"exec:--action lock --pid 123",
+		"exec:--action lock --pid 456",
+		"exec:--action checkpoint --pid 123",
+		"exec:--action checkpoint --pid 456",
 	}
 	if fmt.Sprint(rec.calls) != fmt.Sprint(want) {
 		t.Errorf("call order = %v, want %v", rec.calls, want)
@@ -166,13 +169,16 @@ func TestRestoreWithNCCLShim(t *testing.T) {
 	rec := &shimRecorder{}
 	c := rec.trackedBackend(backends.NCCLShimConfig{Enabled: true, DestroyWait: time.Millisecond})
 
-	if err := c.Restore(context.Background(), backends.Request{JobID: "test-job", Config: cudaConfig(123)}); err != nil {
+	// Pass PIDs in reverse order to verify ascending sort normalization
+	if err := c.Restore(context.Background(), backends.Request{JobID: "test-job", Config: cudaConfig(456, 123)}); err != nil {
 		t.Fatalf("Restore() error = %v", err)
 	}
 
 	want := []string{
-		"exec:--toggle --pid",
+		"exec:--toggle --pid 123",
+		"exec:--toggle --pid 456",
 		"signal:123:36",
+		"signal:456:36",
 	}
 	if fmt.Sprint(rec.calls) != fmt.Sprint(want) {
 		t.Errorf("call order = %v, want %v", rec.calls, want)
