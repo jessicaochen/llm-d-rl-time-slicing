@@ -50,6 +50,16 @@ spec:
               value: "all"
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: "compute,utility"
+            {{- if .Values.ncclShim.enabled }}
+            - name: NCCL_SHIM_ENABLED
+              value: "true"
+            - name: NCCL_SHIM_DESTROY_SIGNAL
+              value: {{ .Values.ncclShim.destroySignal | quote }}
+            - name: NCCL_SHIM_RECREATE_SIGNAL
+              value: {{ .Values.ncclShim.recreateSignal | quote }}
+            - name: NCCL_SHIM_DESTROY_WAIT
+              value: {{ .Values.ncclShim.destroyWait | quote }}
+            {{- end }}
           ports:
             - name: grpc
               containerPort: {{ .Values.port }}

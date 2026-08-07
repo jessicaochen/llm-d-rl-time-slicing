@@ -47,6 +47,16 @@ nvidia:
     hostPath: /dev
     mountPath: /dev
 
+# NCCL checkpoint/restore shim signaling. When enabled, the agent signals the
+# LD_PRELOAD shim inside workload processes to destroy NCCL communicators
+# before a cuda-checkpoint freeze and to arm lazy recreation after restore.
+# Only enable on nodes whose CUDA-backend jobs run with the shim preloaded.
+ncclShim:
+  enabled: false
+  destroySignal: 35 # SIGRTMIN+1 under glibc
+  recreateSignal: 36 # SIGRTMIN+2 under glibc
+  destroyWait: 2s
+
 rbac:
   create: true
 

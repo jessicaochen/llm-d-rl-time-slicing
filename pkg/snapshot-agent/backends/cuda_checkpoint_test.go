@@ -3,7 +3,10 @@ package backends_test
 import (
 	"context"
 	"fmt"
+	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	pb "github.com/llm-d-incubation/llm-d-rl-time-slicing/pkg/snapshot-agent/api/v1alpha1"
@@ -118,6 +121,97 @@ func TestRestore(t *testing.T) {
 				t.Errorf("Restore() error = %v, expectedErr %v", err, tt.expectedErr)
 			}
 		})
+	}
+}
+
+// shimRecorder tracks the interleaving of shim signals and cuda-checkpoint
+// invocations so tests can assert ordering.
+type shimRecorder struct {
+	calls []string
+}
+
+func (r *shimRecorder) trackedBackend(shim backends.NCCLShimConfig) *backends.CudaCheckpoint {
+	c := backends.NewCudaCheckpoint(backends.WithNCCLShim(shim))
+	c.SetExecCommand(func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		r.calls = append(r.calls, "exec:"+strings.Join(args[:2], " "))
+		return nil, nil
+	})
+	c.SetSignalProcess(func(pid int, sig syscall.Signal) error {
+		r.calls = append(r.calls, fmt.Sprintf("signal:%d:%d", pid, sig))
+		return nil
+	})
+	return c
+}
+
+func TestSnapshotWithNCCLShim(t *testing.T) {
+	rec := &shimRecorder{}
+	c := rec.trackedBackend(backends.NCCLShimConfig{Enabled: true, DestroyWait: time.Millisecond})
+
+	if err := c.Snapshot(context.Background(), backends.Request{JobID: "test-job", Config: cudaConfig(123, 456)}); err != nil {
+		t.Fatalf("Snapshot() error = %v", err)
+	}
+
+	want := []string{
+		"signal:123:35",
+		"signal:456:35",
+		"exec:--action lock",
+		"exec:--action checkpoint",
+	}
+	if fmt.Sprint(rec.calls) != fmt.Sprint(want) {
+		t.Errorf("call order = %v, want %v", rec.calls, want)
+	}
+}
+
+func TestRestoreWithNCCLShim(t *testing.T) {
+	rec := &shimRecorder{}
+	c := rec.trackedBackend(backends.NCCLShimConfig{Enabled: true, DestroyWait: time.Millisecond})
+
+	if err := c.Restore(context.Background(), backends.Request{JobID: "test-job", Config: cudaConfig(123)}); err != nil {
+		t.Fatalf("Restore() error = %v", err)
+	}
+
+	want := []string{
+		"exec:--toggle --pid",
+		"signal:123:36",
+	}
+	if fmt.Sprint(rec.calls) != fmt.Sprint(want) {
+		t.Errorf("call order = %v, want %v", rec.calls, want)
+	}
+}
+
+func TestSnapshotShimDisabledSendsNoSignals(t *testing.T) {
+	rec := &shimRecorder{}
+	c := backends.NewCudaCheckpoint()
+	c.SetExecCommand(func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+		return nil, nil
+	})
+	c.SetSignalProcess(func(pid int, sig syscall.Signal) error {
+		rec.calls = append(rec.calls, fmt.Sprintf("signal:%d:%d", pid, sig))
+		return nil
+	})
+
+	if err := c.Snapshot(context.Background(), backends.Request{JobID: "test-job", Config: cudaConfig(123)}); err != nil {
+		t.Fatalf("Snapshot() error = %v", err)
+	}
+	if len(rec.calls) != 0 {
+		t.Errorf("expected no signals with shim disabled, got %v", rec.calls)
+	}
+}
+
+func TestSnapshotShimSignalFailure(t *testing.T) {
+	rec := &shimRecorder{}
+	c := rec.trackedBackend(backends.NCCLShimConfig{Enabled: true, DestroyWait: time.Millisecond})
+	c.SetSignalProcess(func(int, syscall.Signal) error {
+		return fmt.Errorf("no such process")
+	})
+
+	if err := c.Snapshot(context.Background(), backends.Request{JobID: "test-job", Config: cudaConfig(123)}); err == nil {
+		t.Fatal("Snapshot() expected error when shim signaling fails")
+	}
+	for _, call := range rec.calls {
+		if strings.HasPrefix(call, "exec:") {
+			t.Errorf("cuda-checkpoint must not run after shim signal failure, got %v", rec.calls)
+		}
 	}
 }
 
