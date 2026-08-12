@@ -2,6 +2,7 @@ package backends
 
 import (
 	"context"
+	"syscall"
 	"time"
 )
 
@@ -22,4 +23,8 @@ func (c *CudaCheckpoint) SetNvmlClient(n nvmlClient) {
 
 func (c *CudaCheckpoint) SetLookPath(f func(string) (string, error)) {
 	c.lookPath = f
+}
+
+func (c *CudaCheckpoint) SetSignalProcess(f func(pid int, sig syscall.Signal) error) {
+	c.signalProcess = f
 }
