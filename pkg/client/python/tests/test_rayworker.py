@@ -8,6 +8,7 @@ class was created. The agent side is the real in-process gRPC FakeAgent, so a
 command travels agent -> proxy -> RankFanout -> fake rank actors end to end.
 """
 
+import importlib.machinery
 import importlib.util
 import os
 import sys
@@ -134,6 +135,10 @@ class FakeRay:
             "ray.util": util,
             "ray.util.scheduling_strategies": strategies,
         }
+        for name, mod in self.modules.items():
+            # A real-looking spec keeps importlib.util.find_spec("ray") working
+            # elsewhere while the fake sits in sys.modules.
+            mod.__spec__ = importlib.machinery.ModuleSpec(name, None)
         self.FakeMethod = FakeMethod
         self.GetTimeoutError = GetTimeoutError
 
@@ -345,7 +350,7 @@ class SpawnTest(RayWorkerTestBase):
             self.assertEqual(
                 opts["name"], f"timeslice-offload-proxy-test-job-{node[:8]}"
             )
-            self.assertTrue(opts["get_if_exists"])
+            self.assertNotIn("get_if_exists", opts)  # never adopt a stale proxy
             self.assertEqual(opts["num_cpus"], 0)
             self.assertEqual(
                 (opts["scheduling_strategy"].node_id, opts["scheduling_strategy"].soft),

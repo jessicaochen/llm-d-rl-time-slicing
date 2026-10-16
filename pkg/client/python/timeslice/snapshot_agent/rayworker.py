@@ -16,18 +16,15 @@ is not a dependency of the ``timeslice`` client (hence not re-exported from
 that hosts rank actors.
 """
 
-import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import ray
 from ray.util.scheduling_strategies import NodeAffinitySchedulingStrategy
 
 from .workload import register_workload
-
-logger = logging.getLogger(__name__)
 
 ENV_AGENT_ADDR = "TIMESLICE_AGENT_ADDR"
 # Below the agent's fixed two-minute command deadline, leaving room for the
@@ -38,11 +35,11 @@ DEFAULT_NAME_PREFIX = "timeslice-offload-proxy"
 
 _MODE_NAMES = ("offload", "discard")
 
-LogFn = Callable[[str], None]
 
-
-def _default_log(msg: str) -> None:
-    logger.info("%s", msg)
+def _log(msg: str) -> None:
+    # print+flush: visible in job logs whatever the logging config, and Ray
+    # forwards actor stdout to the driver.
+    print(f"[timeslice] {msg}", flush=True)
 
 
 @dataclass(frozen=True)
@@ -98,7 +95,6 @@ class RankFanout:
         *,
         job_id: str = "",
         node: str = "",
-        log: Optional[LogFn] = None,
     ):
         if not handles:
             raise ValueError("RankFanout needs at least one handle")
@@ -106,7 +102,6 @@ class RankFanout:
         self._spec = spec
         self._job_id = job_id
         self._node = node
-        self._log = log or _default_log
         self.supported_modes = list(spec.supported_modes)
         self.default_mode = spec.default_mode
         self.tags = list(spec.tags)
@@ -143,11 +138,11 @@ class RankFanout:
             refs = [getattr(h, method).remote(**dict(kwargs)) for h in self._handles]
             ray.get(refs, timeout=self._spec.call_timeout_sec)
         except Exception as err:
-            self._log(
+            _log(
                 f"{prefix} FAILED after {time.monotonic() - started:.1f}s err={type(err).__name__}: {err}"
             )
             raise
-        self._log(f"{prefix} took={time.monotonic() - started:.1f}s")
+        _log(f"{prefix} took={time.monotonic() - started:.1f}s")
 
 
 class OffloadProxy:
@@ -166,7 +161,6 @@ class OffloadProxy:
         spec: OffloadSpec,
         agent: Optional[str] = None,
         node: str = "",
-        log: Optional[LogFn] = None,
     ):
         agent = agent or os.environ.get(ENV_AGENT_ADDR, "")
         if not agent:
@@ -176,7 +170,7 @@ class OffloadProxy:
         self._job_id = job_id
         self._agent = agent
         self._node = node
-        self._fanout = RankFanout(handles, spec, job_id=job_id, node=node, log=log)
+        self._fanout = RankFanout(handles, spec, job_id=job_id, node=node)
         self._handle = register_workload(
             agent,
             job_id=job_id,
@@ -238,7 +232,6 @@ class OffloadProxySet:
     job_id: str
     actors: List[Any]
     nodes: List[str]
-    log: LogFn = _default_log
 
     def info(self, timeout: float = 10.0) -> List[Dict[str, Any]]:
         return ray.get([a.info.remote() for a in self.actors], timeout=timeout)
@@ -248,7 +241,7 @@ class OffloadProxySet:
         try:
             ray.get([a.close.remote(timeout) for a in self.actors], timeout=timeout + 5)
         except Exception as err:  # noqa: BLE001 - best effort; the kill below still deregisters
-            self.log(
+            _log(
                 f"job={self.job_id} offload proxies: close reported {type(err).__name__}: {err}"
             )
         for actor in self.actors:
@@ -267,7 +260,6 @@ def spawn_offload_proxies(
     agent: Optional[str] = None,
     ready_timeout: float = DEFAULT_READY_TIMEOUT_SEC,
     name_prefix: str = DEFAULT_NAME_PREFIX,
-    log: Optional[LogFn] = None,
 ) -> OffloadProxySet:
     """Starts one pinned ``OffloadProxy`` actor per node hosting ``handles``
     and waits until every proxy has its channel to the agent open.
@@ -282,15 +274,13 @@ def spawn_offload_proxies(
         raise ValueError("job_id is required")
     if not handles:
         raise ValueError("no handles to proxy")
-    log = log or _default_log
 
     actors: List[Any] = []
     nodes: List[str] = []
-    for node_id, local in group_handles_by_node(handles).items():
+    for node_id, local in group_handles_by_node(handles, timeout=ready_timeout).items():
         short = node_id[:8]
         actor = OffloadProxyActor.options(
             name=f"{name_prefix}-{job_id}-{short}",
-            get_if_exists=True,
             num_cpus=0,
             scheduling_strategy=NodeAffinitySchedulingStrategy(
                 node_id=node_id, soft=False
@@ -302,11 +292,10 @@ def spawn_offload_proxies(
             spec=spec,
             agent=agent,
             node=short,
-            log=log,
         )
         actors.append(actor)
         nodes.append(node_id)
-    proxies = OffloadProxySet(job_id=job_id, actors=actors, nodes=nodes, log=log)
+    proxies = OffloadProxySet(job_id=job_id, actors=actors, nodes=nodes)
 
     try:
         ready = ray.get(

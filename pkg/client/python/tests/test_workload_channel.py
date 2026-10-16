@@ -165,6 +165,29 @@ class WorkloadChannelTest(unittest.TestCase):
         self.assertFalse(handle.wait_connected(timeout=0.5))
         self.assertFalse(handle.connected)
 
+    def test_close_while_connecting_leaves_no_open_stream(self):
+        # close() before the agent is reachable: the connect that completes
+        # afterwards must not leave a registered stream behind.
+        self.agent = FakeAgent()
+        self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+        pb2_grpc.add_SnapshotAgentServiceServicer_to_server(self.agent, self.server)
+        port = self.server.add_insecure_port("127.0.0.1:0")  # bound, not serving yet
+        self.addCleanup(self.server.stop, 0)
+        handle = register_workload(
+            f"127.0.0.1:{port}", job_id="closing", workload=RecordingWorkload()
+        )
+        handle.close(
+            timeout=0.2
+        )  # returns while the thread still waits for the channel
+        self.server.start()
+        handle._thread.join(timeout=5)
+        self.assertFalse(handle._thread.is_alive())
+        for stream in self.agent.wait_streams(1, timeout=1.0):
+            self.assertTrue(
+                stream.closed.wait(timeout=5), "stream left open after close()"
+            )
+        self.assertFalse(handle.connected)
+
     def test_connected_clears_on_disconnect(self):
         address = self.start_agent(drop_streams=1)
         handle = self.register(address, RecordingWorkload())

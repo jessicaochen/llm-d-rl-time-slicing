@@ -143,6 +143,11 @@ class WorkloadHandle:
             stub = snapshot_agent_pb2_grpc.SnapshotAgentServiceStub(channel)
             call = stub.WorkloadChannel(requests())
             with self._call_lock:
+                if self._stop.is_set():
+                    # close() ran while we were waiting for the channel; it
+                    # found no call to cancel, so do it here.
+                    call.cancel()
+                    return
                 self._call = call
             self._connected.set()
             logger.info(

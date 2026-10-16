@@ -19,8 +19,6 @@ import os
 from collections.abc import Sequence
 from typing import Any
 
-from timeslice_verl.locks import _log
-
 ENV_APP_OFFLOAD = "TIMESLICE_APP_OFFLOAD"
 ENV_AGENT_ADDR = "TIMESLICE_AGENT_ADDR"
 
@@ -60,7 +58,6 @@ def default_proxy_spawner(handles: Sequence[Any], spec: Any, *, job_id: str, gro
         group=group,
         agent=None,
         ready_timeout=OFFLOAD_READY_TIMEOUT_SEC,
-        log=_log,
     )
 
 

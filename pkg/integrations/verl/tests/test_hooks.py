@@ -755,7 +755,7 @@ class TestAppOffload:
         assert kwargs["agent"] is None  # resolved per node inside the proxy
         assert (kwargs["job_id"], kwargs["group"]) == ("j", "g")
         assert kwargs["ready_timeout"] == offload_mod.OFFLOAD_READY_TIMEOUT_SEC
-        assert kwargs["log"] is locks_mod._log
+        assert "log" not in kwargs  # nothing from the driver is shipped into the proxies
 
 
 class TestBackendConfigOnRelease:

@@ -64,7 +64,7 @@ proxies.close()                       # crash paths only; proxies die with their
 What it does:
 
 - `group_handles_by_node` asks each handle for its Ray node id (via `__ray_call__`) and groups the handles per node, preserving rank order.
-- One `OffloadProxy` actor per node: `num_cpus=0`, `NodeAffinitySchedulingStrategy(node_id, soft=False)`, named `timeslice-offload-proxy-<job_id>-<node_id[:8]>` with `get_if_exists=True`, non-detached (owned by the caller, so it disappears with it and the dropped stream deregisters it at the agent).
+- One `OffloadProxy` actor per node: `num_cpus=0`, `NodeAffinitySchedulingStrategy(node_id, soft=False)`, named `timeslice-offload-proxy-<job_id>-<node_id[:8]>` (a name collision fails the spawn rather than adopting a stale proxy), non-detached (owned by the caller, so it disappears with it and the dropped stream deregisters it at the agent).
 - Each proxy calls `register_workload(agent, job_id, group, workload=RankFanout(...))`, advertising `supported_modes=["offload"]`. The agent rejects a `discard` request for the job before any command is sent.
 - `spawn_offload_proxies` returns only after **every** proxy has its channel to its agent open, or raises `TimeoutError` after closing what it started.
 - On a command, `RankFanout` calls `handle.<method>.remote(**kwargs)` on every local rank and `ray.get`s the results with `call_timeout_sec`. Any rank error or timeout fails the command with an attributable message (the agent surfaces it as `workload <job> failed command: ...`). Each command logs one line: `job=<id> OFFLOAD|RELOAD node=<id8> ranks=<n> method=<m> took=<s>s`.
@@ -128,10 +128,10 @@ The proxy actor holds no CUDA context, so it survives a `cuda-checkpoint` of the
 
 ## 8. Observing and troubleshooting
 
-Job log (`[timeslice]` lines, forwarded from the proxies into the driver's log):
+Job log (`[timeslice]` lines; the proxies print to stdout, which Ray forwards into the driver's log):
 
 ```
-[timeslice] job=job-a-trainer OFFLOAD-PROXIES ready nodes=1 ranks=1 method=actor_to took=1.3s
+[timeslice] job=job-a-trainer OFFLOAD-PROXIES ready nodes=1 ranks=1 method=actor_to backend=app_channel took=1.3s
 [timeslice] job=job-a-trainer OFFLOAD node=3f2a9c1e ranks=1 method=actor_to took=1.9s
 [timeslice] job=job-a-trainer RELOAD node=3f2a9c1e ranks=1 method=actor_to took=1.6s
 ```

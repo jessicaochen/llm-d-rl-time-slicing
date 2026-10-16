@@ -39,19 +39,21 @@ class FakeAgent(pb2_grpc.SnapshotAgentServiceServicer):
         self.results = queue.Queue()
         self.commands = queue.Queue()
         self.drop_streams = drop_streams
-        self._lock = threading.Lock()
+        self._lock = threading.Condition()
+
+    def _open_streams(self):  # call with self._lock held
+        return [s for s in self.streams if not s.closed.is_set()]
 
     def wait_streams(self, n, timeout=10.0):
         """Blocks until n streams have registered (and are still open)."""
-        deadline = threading.Event()
-        for _ in range(int(timeout / 0.05)):
-            with self._lock:
-                open_streams = [s for s in self.streams if not s.closed.is_set()]
-            if len(open_streams) >= n:
-                return open_streams
-            deadline.wait(0.05)
         with self._lock:
-            return [s for s in self.streams if not s.closed.is_set()]
+            self._lock.wait_for(lambda: len(self._open_streams()) >= n, timeout=timeout)
+            return self._open_streams()
+
+    def _stream_closed(self, stream):
+        with self._lock:
+            stream.closed.set()
+            self._lock.notify_all()
 
     def WorkloadChannel(self, request_iterator, context):  # noqa: N802 - grpc method name
         first = next(request_iterator)
@@ -59,10 +61,11 @@ class FakeAgent(pb2_grpc.SnapshotAgentServiceServicer):
         with self._lock:
             self.registrations.append(first.register)
             self.streams.append(stream)
+            self._lock.notify_all()
         self.registered.set()
         if self.drop_streams > 0:
             self.drop_streams -= 1
-            stream.closed.set()
+            self._stream_closed(stream)
             return
 
         def read_results():
@@ -92,4 +95,4 @@ class FakeAgent(pb2_grpc.SnapshotAgentServiceServicer):
                     return
                 yield cmd
         finally:
-            stream.closed.set()
+            self._stream_closed(stream)
