@@ -268,7 +268,7 @@ def spawn_offload_proxies(
     the accelerator. ``agent=None`` lets each proxy resolve
     ``TIMESLICE_AGENT_ADDR`` on its own node. Raises ``TimeoutError`` (after
     closing what it started) if any proxy cannot reach its agent within
-    ``ready_timeout`` seconds.
+    ``ready_timeout`` seconds, or ``RuntimeError`` if proxy actors fail to start.
     """
     if not job_id:
         raise ValueError("job_id is required")
@@ -301,6 +301,11 @@ def spawn_offload_proxies(
         ready = ray.get(
             [a.ready.remote(ready_timeout) for a in actors], timeout=ready_timeout + 15
         )
+    except (TimeoutError, ray.exceptions.GetTimeoutError) as err:
+        proxies.close()
+        raise TimeoutError(
+            f"offload proxies for job {job_id} timed out waiting for readiness within {ready_timeout:.0f}s: {err}"
+        ) from err
     except Exception as err:
         proxies.close()
         raise RuntimeError(

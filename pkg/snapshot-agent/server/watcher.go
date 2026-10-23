@@ -38,10 +38,11 @@ type Watcher struct {
 	state     *sm.StateManager
 	nodeName  string
 	informer  cache.SharedIndexInformer
+	residueMB int
 }
 
 // NewWatcher creates a new Watcher instance.
-func NewWatcher(clientset kubernetes.Interface, state *sm.StateManager) (*Watcher, error) {
+func NewWatcher(clientset kubernetes.Interface, state *sm.StateManager, residueMB int) (*Watcher, error) {
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
 		return nil, fmt.Errorf("NODE_NAME environment variable not set")
@@ -60,6 +61,7 @@ func NewWatcher(clientset kubernetes.Interface, state *sm.StateManager) (*Watche
 		state:     state,
 		nodeName:  nodeName,
 		informer:  podInformer,
+		residueMB: residueMB,
 	}
 
 	_, err := podInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -139,17 +141,26 @@ func (w *Watcher) checkIdleJobs(ctx context.Context) {
 		// Find pods for this job on this node
 		pods := w.getLocalPodsForJob(status.JobId)
 		for _, pod := range pods {
-			pids, err := podutils.GetPodPIDs(ctx, pod.Name, pod.Namespace)
+			info, err := podutils.GetPodGPUInfo(ctx, pod.Name, pod.Namespace)
 			if err != nil {
 				// Don't log spammy errors if NVML is not initialized or no devices
-				slog.Debug("Failed to get pod PIDs", "pod", pod.Name, "error", err)
+				slog.Debug("Failed to get pod GPU info", "pod", pod.Name, "error", err)
 				continue
 			}
 
-			if len(pids) > 0 {
-				slog.Info("Detected GPU activity for job, transitioning to RUNNING", "jobID", status.JobId, "pids", pids)
-				if err := w.state.TransitionToRunning(status.JobId, pids); err != nil {
-					slog.Error("Failed to transition job to RUNNING", "jobID", status.JobId, "error", err)
+			if len(info.PIDs) > 0 {
+				vramMB := int(info.TotalVRAMBytes / (1024 * 1024))
+				if vramMB > w.residueMB || w.residueMB == 0 {
+					slog.Info("Detected GPU activity for job, transitioning to RUNNING", "jobID", status.JobId, "pids", info.PIDs)
+					if err := w.state.TransitionToRunning(status.JobId, info.PIDs); err != nil {
+						slog.Error("Failed to transition job to RUNNING", "jobID", status.JobId, "error", err)
+					}
+				} else {
+					slog.Info("Detected parked GPU residue for job, transitioning to SAVED",
+						"jobID", status.JobId, "vramMB", vramMB, "thresholdMB", w.residueMB)
+					if err := w.state.TransitionToSaved(status.JobId, info.PIDs); err != nil {
+						slog.Error("Failed to transition job to SAVED", "jobID", status.JobId, "error", err)
+					}
 				}
 				break // Transitioned, no need to check other pods for this job
 			}

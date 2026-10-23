@@ -183,6 +183,10 @@ class TimesliceHooksMixin:
         trainer additionally logs and suppresses on_exception hook errors)."""
         if not enabled():
             return
+        if self._offload_proxies is not None and self._locks is not None:
+            # Proxies are closing: reset backend to cuda (agent default) before release
+            # so the orchestrator does not dispatch future snapshots to a dead channel.
+            self._locks.backend_config = "cuda"
         try:
             locks = self._locks
             if locks is not None and locks.enabled:
@@ -270,8 +274,8 @@ class TimesliceHooksMixin:
         die with it, and the dropped stream deregisters them at the agent."""
         proxies, self._offload_proxies = self._offload_proxies, None
         if self._locks is not None:
-            # No channel left to serve an app_channel request.
-            self._locks.backend_config = None
+            # Channel is closed; fall back to cuda (agent default).
+            self._locks.backend_config = "cuda"
         if proxies is None:
             return
         _log("closing offload proxies")

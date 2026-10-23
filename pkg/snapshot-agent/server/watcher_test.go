@@ -35,9 +35,11 @@ func TestWatcher(t *testing.T) {
 	// Save original functions and restore after tests
 	origGetK8sClient := podutils.GetK8sClient
 	origGetPodPIDs := podutils.GetPodPIDs
+	origGetPodGPUInfo := podutils.GetPodGPUInfo
 	defer func() {
 		podutils.GetK8sClient = origGetK8sClient
 		podutils.GetPodPIDs = origGetPodPIDs
+		podutils.GetPodGPUInfo = origGetPodGPUInfo
 	}()
 
 	os.Setenv("NODE_NAME", "test-node")
@@ -45,8 +47,10 @@ func TestWatcher(t *testing.T) {
 
 	tests := []struct {
 		name          string
+		residueMB     int
 		pods          []*corev1.Pod
 		mockPIDs      func(ctx context.Context, podName, namespace string) ([]int, error)
+		mockGPUInfo   func(ctx context.Context, podName, namespace string) (*podutils.PodGPUInfo, error)
 		expectedState map[string]pb.JobState // jobID -> expected state
 		expectedPIDs  map[string][]int       // jobID -> expected PIDs
 		timeout       time.Duration
@@ -137,6 +141,34 @@ func TestWatcher(t *testing.T) {
 			expectedState: map[string]pb.JobState{}, // No jobs expected
 			timeout:       1 * time.Second,
 		},
+		{
+			name:      "Transition to SAVED when VRAM is below residue threshold",
+			residueMB: 4096,
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-offloaded",
+						Namespace: "default",
+						Labels: map[string]string{
+							podutils.JobIDLabel: "job-offloaded",
+						},
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "test-node",
+					},
+				},
+			},
+			mockGPUInfo: func(ctx context.Context, podName, namespace string) (*podutils.PodGPUInfo, error) {
+				return &podutils.PodGPUInfo{PIDs: []int{789}, TotalVRAMBytes: 2000 * 1024 * 1024}, nil
+			},
+			expectedState: map[string]pb.JobState{
+				"job-offloaded": pb.JobState_JOB_STATE_SAVED,
+			},
+			expectedPIDs: map[string][]int{
+				"job-offloaded": {789},
+			},
+			timeout: 3 * time.Second,
+		},
 	}
 
 	for _, tc := range tests {
@@ -146,16 +178,28 @@ func TestWatcher(t *testing.T) {
 				return fakeClient, nil
 			}
 
-			if tc.mockPIDs != nil {
+			if tc.mockGPUInfo != nil {
+				podutils.GetPodGPUInfo = tc.mockGPUInfo
+			} else if tc.mockPIDs != nil {
 				podutils.GetPodPIDs = tc.mockPIDs
+				podutils.GetPodGPUInfo = func(ctx context.Context, podName, namespace string) (*podutils.PodGPUInfo, error) {
+					pids, err := tc.mockPIDs(ctx, podName, namespace)
+					if err != nil {
+						return nil, err
+					}
+					return &podutils.PodGPUInfo{PIDs: pids, TotalVRAMBytes: 0}, nil
+				}
 			} else {
 				podutils.GetPodPIDs = func(ctx context.Context, podName, namespace string) ([]int, error) {
 					return nil, nil
 				}
+				podutils.GetPodGPUInfo = func(ctx context.Context, podName, namespace string) (*podutils.PodGPUInfo, error) {
+					return &podutils.PodGPUInfo{PIDs: nil, TotalVRAMBytes: 0}, nil
+				}
 			}
 
 			state := sm.NewStateManager()
-			watcher, err := server.NewWatcher(fakeClient, state)
+			watcher, err := server.NewWatcher(fakeClient, state, tc.residueMB)
 			if err != nil {
 				t.Fatalf("Failed to create watcher: %v", err)
 			}

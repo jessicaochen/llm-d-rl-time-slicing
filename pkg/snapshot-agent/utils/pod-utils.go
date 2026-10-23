@@ -107,10 +107,25 @@ func GetLocalPods(ctx context.Context, jobID string) ([]corev1.Pod, error) {
 	return podList.Items, nil
 }
 
-// GetPodPIDs returns the host-namespace PIDs of all CUDA-context-holding processes belonging to the specified pod.
-var GetPodPIDs = getPodPIDsInternal
+// PodGPUInfo reports PIDs and aggregated GPU memory for a pod.
+type PodGPUInfo struct {
+	PIDs           []int
+	TotalVRAMBytes uint64
+}
 
-func getPodPIDsInternal(ctx context.Context, podName, namespace string) ([]int, error) {
+// GetPodGPUInfo returns the host-namespace PIDs and total VRAM used by CUDA processes in the pod.
+var GetPodGPUInfo = getPodGPUInfoInternal
+
+// GetPodPIDs returns the host-namespace PIDs of all CUDA-context-holding processes belonging to the specified pod.
+var GetPodPIDs = func(ctx context.Context, podName, namespace string) ([]int, error) {
+	info, err := GetPodGPUInfo(ctx, podName, namespace)
+	if err != nil {
+		return nil, err
+	}
+	return info.PIDs, nil
+}
+
+func getPodGPUInfoInternal(ctx context.Context, podName, namespace string) (*PodGPUInfo, error) {
 	// 1. Get the pod UID
 
 	podUID, err := GetPodUID(ctx, podName, namespace)
@@ -132,7 +147,7 @@ func getPodPIDsInternal(ctx context.Context, podName, namespace string) ([]int, 
 		}
 	}()
 
-	// 3. Discover PIDs
+	// 3. Discover PIDs and memory
 	count, ret := NvmlDeviceGetCount()
 	if ret != nvml.SUCCESS {
 		return nil, fmt.Errorf("failed to get device count: %v", nvml.ErrorString(ret))
@@ -140,6 +155,7 @@ func getPodPIDsInternal(ctx context.Context, podName, namespace string) ([]int, 
 
 	var pids []int
 	seenPIDs := make(map[int]bool)
+	var totalVRAMBytes uint64
 
 	for i := 0; i < count; i++ {
 		device, ret := NvmlDeviceGetHandleByIndex(i)
@@ -160,9 +176,6 @@ func getPodPIDsInternal(ctx context.Context, podName, namespace string) ([]int, 
 				continue
 			}
 			pid := int(proc.Pid)
-			if seenPIDs[pid] {
-				continue
-			}
 
 			inCgroup, err := IsPIDInPodCgroupFunc(pid, podUID)
 			if err != nil {
@@ -170,8 +183,11 @@ func getPodPIDsInternal(ctx context.Context, podName, namespace string) ([]int, 
 			}
 
 			if inCgroup {
-				pids = append(pids, pid)
-				seenPIDs[pid] = true
+				if !seenPIDs[pid] {
+					pids = append(pids, pid)
+					seenPIDs[pid] = true
+				}
+				totalVRAMBytes += uint64(proc.UsedGpuMemory)
 			}
 		}
 
@@ -185,9 +201,6 @@ func getPodPIDsInternal(ctx context.Context, podName, namespace string) ([]int, 
 					continue
 				}
 				pid := int(proc.Pid)
-				if seenPIDs[pid] {
-					continue
-				}
 
 				inCgroup, err := IsPIDInPodCgroupFunc(pid, podUID)
 				if err != nil {
@@ -195,14 +208,17 @@ func getPodPIDsInternal(ctx context.Context, podName, namespace string) ([]int, 
 				}
 
 				if inCgroup {
-					pids = append(pids, pid)
-					seenPIDs[pid] = true
+					if !seenPIDs[pid] {
+						pids = append(pids, pid)
+						seenPIDs[pid] = true
+					}
+					totalVRAMBytes += uint64(proc.UsedGpuMemory)
 				}
 			}
 		}
 	}
 
-	return pids, nil
+	return &PodGPUInfo{PIDs: pids, TotalVRAMBytes: totalVRAMBytes}, nil
 }
 
 // GetPodUID resolves a pod's UID via the k8s API. Exported for the tpu

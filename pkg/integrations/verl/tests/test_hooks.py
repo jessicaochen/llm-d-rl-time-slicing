@@ -672,12 +672,17 @@ class TestAppOffload:
     def test_crash_close_resets_backend_config(self, offload_env, events):
         t = make_offload_trainer(events)
         run_init_workers(t, events)
-        asyncio.run(t.on_exception("fit", RuntimeError("boom")))
-        assert t._locks.backend_config is None
-        run_sample_end(t, events)
+        run_sample_end(t, events)  # acquire lock
+        assert t._locks.held
         del events[:]
+        asyncio.run(t.on_exception("fit", RuntimeError("boom")))
+        assert t._locks.backend_config == "cuda"
+        assert events == [("release", GROUP, "cuda"), ("close_proxies",)]  # release with cuda before closing proxies
+        assert not t._locks.held
+        del events[:]
+        run_sample_end(t, events)
         run_update_weights(t, events, {"t": 1})
-        assert events[-1] == ("release", GROUP)  # no channel left: plain release
+        assert events[-1] == ("release", GROUP, "cuda")  # no channel left: stays on cuda
 
     def test_spec_method_derived_from_train_role(self, offload_env, events):
         t = make_offload_trainer(events)

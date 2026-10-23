@@ -140,6 +140,10 @@ spec:
                   fieldPath: spec.nodeName
             - name: AGENT_PORT
               value: {{ .Values.port | quote }}
+            {{- if .Values.vramResidueThresholdMB }}
+            - name: VRAM_RESIDUE_THRESHOLD_MB
+              value: {{ .Values.vramResidueThresholdMB | quote }}
+            {{- end }}
             {{- /* Feature gates: explicit values from .Values.featureGates,
                  with directMemory.enabled implying DirectMemoryBackend=true
                  (deploying the GPU-CR machinery is the opt-in). */}}
