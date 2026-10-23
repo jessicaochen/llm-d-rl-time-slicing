@@ -48,6 +48,7 @@ func TestWatcher(t *testing.T) {
 
 	tests := []struct {
 		name          string
+		accelType     string
 		residueMB     int
 		pods          []*corev1.Pod
 		mockPIDs      func(ctx context.Context, podName, namespace string) ([]int, error)
@@ -171,7 +172,8 @@ func TestWatcher(t *testing.T) {
 			timeout: 3 * time.Second,
 		},
 		{
-			name: "TPU fallback transitions to RUNNING on detected PIDs",
+			name:      "TPU discovery transitions to RUNNING on detected PIDs",
+			accelType: "tpu",
 			pods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -187,7 +189,8 @@ func TestWatcher(t *testing.T) {
 				},
 			},
 			mockGPUInfo: func(ctx context.Context, podName, namespace string) (*podutils.PodGPUInfo, error) {
-				return nil, errors.New("nvml: uninitialized")
+				t.Fatal("GetPodGPUInfo should not be called on TPU nodes")
+				return nil, errors.New("should not be called")
 			},
 			mockPIDs: func(ctx context.Context, podName, namespace string) ([]int, error) {
 				return []int{555}, nil
@@ -247,6 +250,7 @@ func TestWatcher(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("ACCELERATOR_TYPE", tc.accelType)
 			fakeClient := fakek8s.NewSimpleClientset()
 			podutils.GetK8sClient = func() (kubernetes.Interface, error) {
 				return fakeClient, nil

@@ -159,6 +159,10 @@ class PhaseLocks:
         """Release everything and close the gRPC channel."""
         if not self.enabled or self._closed:
             return
+        if self.backend_config == "app_channel":
+            # Proxies are closing: reset backend to cuda (agent default) before release
+            # so the orchestrator does not dispatch future snapshots to a dead channel.
+            self.backend_config = "cuda"
         self.drop_all()
         try:
             self._client.close()

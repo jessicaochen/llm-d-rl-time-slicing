@@ -146,15 +146,19 @@ func (w *Watcher) checkIdleJobs(ctx context.Context) {
 			thresholdBytes = uint64(w.residueMB) * 1024 * 1024
 		}
 
+		isTPU := os.Getenv("ACCELERATOR_TYPE") == "tpu"
 		for _, pod := range w.getLocalPodsForJob(status.JobId) {
-			info, err := podutils.GetPodGPUInfo(ctx, pod.Name, pod.Namespace)
-			if err != nil {
-				// On TPU nodes or environments where NVML is unavailable, fall back to GetPodPIDs
-				pids, pErr := podutils.GetPodPIDs(ctx, pod.Name, pod.Namespace)
-				if pErr == nil && len(pids) > 0 {
+			if isTPU {
+				if pids, err := podutils.GetPodPIDs(ctx, pod.Name, pod.Namespace); err == nil && len(pids) > 0 {
 					allPIDs = append(allPIDs, pids...)
 					hasActive = true
 				}
+				continue
+			}
+
+			info, err := podutils.GetPodGPUInfo(ctx, pod.Name, pod.Namespace)
+			if err != nil {
+				slog.Debug("Failed to get pod GPU info", "pod", pod.Name, "error", err)
 				continue
 			}
 

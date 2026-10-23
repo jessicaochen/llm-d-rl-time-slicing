@@ -684,6 +684,18 @@ class TestAppOffload:
         run_update_weights(t, events, {"t": 1})
         assert events[-1] == ("release", GROUP, "cuda")  # no channel left: stays on cuda
 
+    def test_close_resets_backend_config_to_cuda(self, offload_env, events):
+        t = make_offload_trainer(events)
+        run_init_workers(t, events)
+        run_sample_end(t, events)  # acquire lock
+        assert t._locks.held
+        assert t._locks.backend_config == "app_channel"
+        del events[:]
+        t._locks.close()
+        assert t._locks.backend_config == "cuda"
+        assert ("release", GROUP, "cuda") in events
+        assert not t._locks.held
+
     def test_spec_method_derived_from_train_role(self, offload_env, events):
         t = make_offload_trainer(events)
         t.train_role = RoleLike("actor_rollout")
