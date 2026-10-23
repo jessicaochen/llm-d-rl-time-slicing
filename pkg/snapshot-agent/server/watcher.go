@@ -139,30 +139,48 @@ func (w *Watcher) checkIdleJobs(ctx context.Context) {
 		}
 
 		// Find pods for this job on this node
-		pods := w.getLocalPodsForJob(status.JobId)
-		for _, pod := range pods {
+		var allPIDs []int
+		hasActive := false
+		var thresholdBytes uint64
+		if w.residueMB > 0 {
+			thresholdBytes = uint64(w.residueMB) * 1024 * 1024
+		}
+
+		for _, pod := range w.getLocalPodsForJob(status.JobId) {
 			info, err := podutils.GetPodGPUInfo(ctx, pod.Name, pod.Namespace)
 			if err != nil {
-				// Don't log spammy errors if NVML is not initialized or no devices
-				slog.Debug("Failed to get pod GPU info", "pod", pod.Name, "error", err)
+				// On TPU nodes or environments where NVML is unavailable, fall back to GetPodPIDs
+				pids, pErr := podutils.GetPodPIDs(ctx, pod.Name, pod.Namespace)
+				if pErr == nil && len(pids) > 0 {
+					allPIDs = append(allPIDs, pids...)
+					hasActive = true
+				}
 				continue
 			}
 
-			if len(info.PIDs) > 0 {
-				vramMB := int(info.TotalVRAMBytes / (1024 * 1024))
-				if vramMB > w.residueMB || w.residueMB == 0 {
-					slog.Info("Detected GPU activity for job, transitioning to RUNNING", "jobID", status.JobId, "pids", info.PIDs)
-					if err := w.state.TransitionToRunning(status.JobId, info.PIDs); err != nil {
-						slog.Error("Failed to transition job to RUNNING", "jobID", status.JobId, "error", err)
-					}
-				} else {
-					slog.Info("Detected parked GPU residue for job, transitioning to SAVED",
-						"jobID", status.JobId, "vramMB", vramMB, "thresholdMB", w.residueMB)
-					if err := w.state.TransitionToSaved(status.JobId, info.PIDs); err != nil {
-						slog.Error("Failed to transition job to SAVED", "jobID", status.JobId, "error", err)
-					}
-				}
-				break // Transitioned, no need to check other pods for this job
+			if len(info.PIDs) == 0 {
+				continue
+			}
+			allPIDs = append(allPIDs, info.PIDs...)
+			if w.residueMB == 0 || info.TotalVRAMBytes > thresholdBytes {
+				hasActive = true
+			}
+		}
+
+		if len(allPIDs) == 0 {
+			continue
+		}
+
+		if hasActive {
+			slog.Info("Detected GPU activity for job, transitioning to RUNNING", "jobID", status.JobId, "pids", allPIDs)
+			if err := w.state.TransitionToRunning(status.JobId, allPIDs); err != nil {
+				slog.Error("Failed to transition job to RUNNING", "jobID", status.JobId, "error", err)
+			}
+		} else {
+			slog.Info("Detected parked GPU residue for job, transitioning to SAVED",
+				"jobID", status.JobId, "thresholdMB", w.residueMB)
+			if err := w.state.TransitionToSaved(status.JobId, allPIDs); err != nil {
+				slog.Error("Failed to transition job to SAVED", "jobID", status.JobId, "error", err)
 			}
 		}
 	}

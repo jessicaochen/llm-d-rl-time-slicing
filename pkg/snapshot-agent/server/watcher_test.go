@@ -16,6 +16,7 @@ package server_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"reflect"
 	"testing"
@@ -169,6 +170,79 @@ func TestWatcher(t *testing.T) {
 			},
 			timeout: 3 * time.Second,
 		},
+		{
+			name: "TPU fallback transitions to RUNNING on detected PIDs",
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-tpu",
+						Namespace: "default",
+						Labels: map[string]string{
+							podutils.JobIDLabel: "job-tpu",
+						},
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "test-node",
+					},
+				},
+			},
+			mockGPUInfo: func(ctx context.Context, podName, namespace string) (*podutils.PodGPUInfo, error) {
+				return nil, errors.New("nvml: uninitialized")
+			},
+			mockPIDs: func(ctx context.Context, podName, namespace string) ([]int, error) {
+				return []int{555}, nil
+			},
+			expectedState: map[string]pb.JobState{
+				"job-tpu": pb.JobState_JOB_STATE_RUNNING,
+			},
+			expectedPIDs: map[string][]int{
+				"job-tpu": {555},
+			},
+			timeout: 3 * time.Second,
+		},
+		{
+			name:      "Multi-pod job transitions to RUNNING if any pod exceeds threshold",
+			residueMB: 1024,
+			pods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-multi-1",
+						Namespace: "default",
+						Labels: map[string]string{
+							podutils.JobIDLabel: "job-multi",
+						},
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "test-node",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-multi-2",
+						Namespace: "default",
+						Labels: map[string]string{
+							podutils.JobIDLabel: "job-multi",
+						},
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "test-node",
+					},
+				},
+			},
+			mockGPUInfo: func(ctx context.Context, podName, namespace string) (*podutils.PodGPUInfo, error) {
+				if podName == "pod-multi-1" {
+					return &podutils.PodGPUInfo{PIDs: []int{101}, TotalVRAMBytes: 200 * 1024 * 1024}, nil
+				}
+				return &podutils.PodGPUInfo{PIDs: []int{102}, TotalVRAMBytes: 2000 * 1024 * 1024}, nil
+			},
+			expectedState: map[string]pb.JobState{
+				"job-multi": pb.JobState_JOB_STATE_RUNNING,
+			},
+			expectedPIDs: map[string][]int{
+				"job-multi": {101, 102},
+			},
+			timeout: 3 * time.Second,
+		},
 	}
 
 	for _, tc := range tests {
@@ -178,9 +252,13 @@ func TestWatcher(t *testing.T) {
 				return fakeClient, nil
 			}
 
-			if tc.mockGPUInfo != nil {
+			switch {
+			case tc.mockGPUInfo != nil && tc.mockPIDs != nil:
 				podutils.GetPodGPUInfo = tc.mockGPUInfo
-			} else if tc.mockPIDs != nil {
+				podutils.GetPodPIDs = tc.mockPIDs
+			case tc.mockGPUInfo != nil:
+				podutils.GetPodGPUInfo = tc.mockGPUInfo
+			case tc.mockPIDs != nil:
 				podutils.GetPodPIDs = tc.mockPIDs
 				podutils.GetPodGPUInfo = func(ctx context.Context, podName, namespace string) (*podutils.PodGPUInfo, error) {
 					pids, err := tc.mockPIDs(ctx, podName, namespace)
@@ -189,7 +267,7 @@ func TestWatcher(t *testing.T) {
 					}
 					return &podutils.PodGPUInfo{PIDs: pids, TotalVRAMBytes: 0}, nil
 				}
-			} else {
+			default:
 				podutils.GetPodPIDs = func(ctx context.Context, podName, namespace string) ([]int, error) {
 					return nil, nil
 				}

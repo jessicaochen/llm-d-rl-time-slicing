@@ -163,31 +163,30 @@ func getPodGPUInfoInternal(ctx context.Context, podName, namespace string) (*Pod
 			continue
 		}
 
+		deviceSeen := make(map[int]bool)
+
 		// Query compute processes
 		procs, ret := device.GetComputeRunningProcesses()
-		if ret != nvml.SUCCESS {
-			continue
-		}
+		if ret == nvml.SUCCESS {
+			for _, proc := range procs {
+				// Skip non-computing parent/daemon processes that hold 0 VRAM; they have no
+				// active CUDA context, so cuda-checkpoint fails to lock them.
+				if proc.UsedGpuMemory == 0 || proc.UsedGpuMemory == nvmlValueNotAvailable {
+					continue
+				}
+				pid := int(proc.Pid)
 
-		for _, proc := range procs {
-			// Skip non-computing parent/daemon processes that hold 0 VRAM; they have no
-			// active CUDA context, so cuda-checkpoint fails to lock them.
-			if proc.UsedGpuMemory == 0 || proc.UsedGpuMemory == nvmlValueNotAvailable {
-				continue
-			}
-			pid := int(proc.Pid)
+				inCgroup, err := IsPIDInPodCgroupFunc(pid, podUID)
+				if err != nil || !inCgroup {
+					continue
+				}
 
-			inCgroup, err := IsPIDInPodCgroupFunc(pid, podUID)
-			if err != nil {
-				continue
-			}
-
-			if inCgroup {
+				deviceSeen[pid] = true
 				if !seenPIDs[pid] {
 					pids = append(pids, pid)
 					seenPIDs[pid] = true
 				}
-				totalVRAMBytes += uint64(proc.UsedGpuMemory)
+				totalVRAMBytes += proc.UsedGpuMemory
 			}
 		}
 
@@ -201,19 +200,21 @@ func getPodGPUInfoInternal(ctx context.Context, podName, namespace string) (*Pod
 					continue
 				}
 				pid := int(proc.Pid)
-
-				inCgroup, err := IsPIDInPodCgroupFunc(pid, podUID)
-				if err != nil {
+				if deviceSeen[pid] {
 					continue
 				}
 
-				if inCgroup {
-					if !seenPIDs[pid] {
-						pids = append(pids, pid)
-						seenPIDs[pid] = true
-					}
-					totalVRAMBytes += uint64(proc.UsedGpuMemory)
+				inCgroup, err := IsPIDInPodCgroupFunc(pid, podUID)
+				if err != nil || !inCgroup {
+					continue
 				}
+
+				deviceSeen[pid] = true
+				if !seenPIDs[pid] {
+					pids = append(pids, pid)
+					seenPIDs[pid] = true
+				}
+				totalVRAMBytes += proc.UsedGpuMemory
 			}
 		}
 	}

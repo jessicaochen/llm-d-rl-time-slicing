@@ -166,6 +166,10 @@ func main() {
 			slog.WarnContext(ctx, "Invalid VRAM_RESIDUE_THRESHOLD_MB, ignoring", "val", envResidue, "error", err)
 		}
 	}
+	if residueMB < 0 {
+		slog.WarnContext(ctx, "Negative VRAM residue threshold specified, defaulting to 0", "specified", residueMB)
+		residueMB = 0
+	}
 
 	slog.InfoContext(ctx, "Starting Snapshot Agent",
 		"port", listenPort, "deploymentMode", depMode, "defaultBackend", defBackend,
